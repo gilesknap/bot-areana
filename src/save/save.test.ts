@@ -69,6 +69,19 @@ describe('IndexedDB save', () => {
     warn.mockRestore();
     expect(() => importSave(JSON.stringify(newer))).toThrow(/different version/);
   });
+
+  it("leaves another save format's record alone when hopping between published versions", async () => {
+    const newer = { ...defaultSave(), version: 2, profiles: [{ ...activeProfile(defaultSave()), name: 'Future' }] };
+    const { openDB } = await import('idb');
+    const d = await openDB('bot-arena', 1, { upgrade: (db) => db.createObjectStore('save') });
+    await d.put('save', newer, 'data-v2');
+    d.close();
+    const data = await loadSave();
+    await saveSave(data);
+    const after = await openDB('bot-arena', 1);
+    expect(await after.get('save', 'data-v2')).toEqual(newer);
+    after.close();
+  });
 });
 
 describe('progress', () => {

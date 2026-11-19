@@ -9,8 +9,9 @@ on:
     inputs:
       ref:
         description: >-
-          Tag or commit to build with this workflow and publish to GitHub Pages (for back-filling
-          versions made before versioned deploys existed). Leave empty for a plain CI run.
+          Tag or full 40-character commit SHA to build with this workflow and publish to GitHub
+          Pages (for back-filling versions made before versioned deploys existed). Leave empty for
+          a plain CI run.
         required: false
         default: ''
       folder:
@@ -21,10 +22,11 @@ on:
 permissions:
   contents: read
 
-# Only pull requests cancel superseded runs; pushes and dispatches each run to the end (a run on
-# main or a tag may be part-way through publishing to gh-pages).
+# One queue per ref, so pushes to main deploy in order (a newer pending run replaces an older
+# pending one). Only pull requests cancel a running run; a push may be part-way through publishing
+# to gh-pages. Back-fill dispatches each get their own group.
 concurrency:
-  group: ci-${{ github.event_name == 'pull_request' && github.ref || github.run_id }}
+  group: ci-${{ github.event_name == 'workflow_dispatch' && github.run_id || github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:

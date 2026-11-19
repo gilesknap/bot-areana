@@ -79,12 +79,12 @@ versions. To delete a version, remove its folder from the `gh-pages` branch by h
 
 The build uses a relative base (`./`), so it works from any folder. To publish a version made
 before this workflow existed, run the workflow by hand (**Actions -> CI -> Run workflow**) with
-`ref` set to the tag or commit; it is built with the current workflow and published under the
+`ref` set to the tag or the commit's full 40-character SHA (a short SHA is not found); it is built with the current workflow and published under the
 `folder` input, or the ref's name if that is empty. For example:
 
 ```sh
 gh workflow run ci.yml -f ref=v0.1.0
-gh workflow run ci.yml -f ref=1d82ce6 -f folder=v0.0.9
+gh workflow run ci.yml -f ref=1d82ce64aa501c0cac951114d1a7224063b3f37a -f folder=v0.0.9
 ```
 
 Only `main` and `v*` folders appear in the version picker.
