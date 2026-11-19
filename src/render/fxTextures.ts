@@ -7,12 +7,28 @@ import { PALETTE } from '../shared/palette';
 
 type Draw = (ctx: CanvasRenderingContext2D, w: number, h: number) => void;
 
+/**
+ * A canvas texture backed by a CPU canvas. Phaser's CanvasTexture reads the pixels back
+ * (getImageData) on creation and refresh; with the GPU-backed canvas textures.createCanvas
+ * makes, Chromium logs "GPU stall due to ReadPixels" for each.
+ */
+export function cpuCanvasTexture(
+  textures: Phaser.Textures.TextureManager,
+  key: string,
+  w: number,
+  h: number,
+  draw: Draw,
+): Phaser.Textures.CanvasTexture | null {
+  const canvas = document.createElement('canvas');
+  canvas.width = w;
+  canvas.height = h;
+  draw(canvas.getContext('2d', { willReadFrequently: true })!, w, h);
+  return textures.addCanvas(key, canvas);
+}
+
 function make(textures: Phaser.Textures.TextureManager, key: string, w: number, h: number, draw: Draw): void {
   if (textures.exists(key)) return;
-  const tex = textures.createCanvas(key, w, h);
-  if (!tex) return;
-  draw(tex.context, w, h);
-  tex.refresh();
+  cpuCanvasTexture(textures, key, w, h, draw);
 }
 
 function radial(stops: Array<[number, string]>): Draw {

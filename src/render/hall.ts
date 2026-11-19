@@ -91,7 +91,7 @@ function hazardPattern(ctx: Ctx, stripe: number): CanvasPattern | null {
   const tile = document.createElement('canvas');
   const s = Math.ceil(stripe * 2);
   tile.width = tile.height = s;
-  const t = tile.getContext('2d')!;
+  const t = tile.getContext('2d', { willReadFrequently: true })!;
   t.fillStyle = '#16130C';
   t.fillRect(0, 0, s, s);
   t.fillStyle = PALETTE.hazardStripe;
