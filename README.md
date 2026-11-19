@@ -36,11 +36,11 @@ Needs Node 22 and npm.
 
 ```sh
 npm ci              # install
-npm run dev         # dev server at http://localhost:5173/bot-areana/
+npm run dev         # dev server at http://localhost:5173/
 npm run typecheck   # tsc --noEmit
 npm test            # Vitest: sim, parts, save, python runtime, every level's reference solution
 npm run build       # typecheck + production build into dist/
-npx vite preview    # serve dist/ at http://localhost:4173/bot-areana/
+npm run preview:site # serve dist/ laid out like Pages: http://localhost:4173/bot-areana/main/
 npm run test:e2e    # Playwright smoke: build a bot, run level 1, see the victory overlay
 ```
 
@@ -63,11 +63,36 @@ solution fits the budget and wins with at least one star.
 
 ## Deploying
 
-The site is built with Vite base path `/bot-areana/` and served from GitHub Pages at
-`https://gilesknap.github.io/bot-areana/`. The CI workflow (`.github/workflows/ci.yml`)
-typechecks, runs the unit and level tests, builds, runs the Playwright smoke, and on pushes to
-`main` deploys `dist/` to Pages.
+GitHub Pages keeps every published version, each in its own folder of the `gh-pages` branch:
 
-One-time setup: in the repository's **Settings -> Pages**, set **Source** to
-**GitHub Actions**. If the repository is renamed, change `base` in `vite.config.ts` and
-`baseURL` in `playwright.config.ts` to match.
+- `https://gilesknap.github.io/bot-areana/main/` - the latest `main`
+- `https://gilesknap.github.io/bot-areana/v0.1.0/` - one folder per `v*` tag
+- `https://gilesknap.github.io/bot-areana/` - redirects to the newest tag (or `main/` if there
+  are none); `switcher.json` beside it lists every version for the in-game picker
+  (**Settings -> Version**)
+
+The CI workflow (`.github/workflows/ci.yml`) typechecks, runs the unit and level tests, builds
+and runs the Playwright tests; then, on a push to `main` or of a `v*` tag, its `deploy` job builds
+that commit and publishes it to its folder with `scripts/publish-pages.sh`. A deploy only replaces
+its own folder and regenerates the root files (`scripts/pages-index.mjs`); it never removes other
+versions. To delete a version, remove its folder from the `gh-pages` branch by hand.
+
+The build uses a relative base (`./`), so it works from any folder. To publish a version made
+before this workflow existed, run the workflow by hand (**Actions -> CI -> Run workflow**) with
+`ref` set to the tag or commit; it is built with the current workflow and published under the
+`folder` input, or the ref's name if that is empty. For example:
+
+```sh
+gh workflow run ci.yml -f ref=v0.1.0
+gh workflow run ci.yml -f ref=1d82ce6 -f folder=v0.0.9
+```
+
+Only `main` and `v*` folders appear in the version picker.
+
+One-time setup: in the repository's **Settings -> Pages**, set **Source** to **Deploy from a
+branch**, branch **gh-pages**, folder **/ (root)**. The `gh-pages` branch is created by the first
+deploy.
+
+All versions share one save (IndexedDB is per origin). `SAVE_VERSION` in `src/save/data.ts`
+versions its format: bump it on an incompatible change, and a version that does not understand
+the stored save starts a fresh profile (with a console warning) instead of misreading it.

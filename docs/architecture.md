@@ -11,14 +11,16 @@ TypeScript (strict) + Vite, Phaser 3 (arena), CodeMirror 6 (editor), Pyodide in 
 
 | command | does |
 |---|---|
-| `npm run dev` | Vite dev server (`http://localhost:5173/bot-areana/`) |
+| `npm run dev` | Vite dev server (`http://localhost:5173/`) |
 | `npm run typecheck` | `tsc --noEmit` |
 | `npm test` | Vitest: unit tests + headless level-solution runs (Pyodide in Node) |
-| `npm run build` | typecheck + `vite build` into `dist/` (base `/bot-areana/` for GitHub Pages) |
-| `npm run test:e2e` | Playwright smoke and stuck-loop watchdog against `vite preview` |
+| `npm run build` | typecheck + `vite build` into `dist/` (relative base `./`, so it runs from any Pages folder) |
+| `npm run preview:site` | serve `dist/` as Pages lays it out (`/bot-areana/main/`, `/bot-areana/v0.1.0/`, `switcher.json`) |
+| `npm run test:e2e` | Playwright smoke, stuck-loop watchdog and version picker against `preview:site` |
 
 CI (`.github/workflows/ci.yml`): typecheck, vitest, build, Playwright (chromium); on push to
-`main` deploys `dist/` to GitHub Pages.
+`main` or a `v*` tag publishes the build to its own folder of the `gh-pages` branch (see the
+README's Deploying section).
 
 Pyodide is pinned once: `package.json` (`pyodide`, used by Node tests) and
 `src/python/version.ts` (`PYODIDE_VERSION`, the browser loads the same version from
@@ -258,7 +260,9 @@ with stars. Narrow screens (< 1024 px) show a "best on a laptop" notice. Keyboar
 (create / rename / delete / switch), `exportSave(data): string`, `importSave(json): SaveData`
 (validates, throws a friendly error), `encodeShare(p: SharePayload): string`,
 `decodeShare(s): SharePayload | null` (lz-string `compressToEncodedURIComponent`), and a pure
-in-memory fallback when IndexedDB is unavailable. The UI auto-saves (debounced) on design,
+in-memory fallback when IndexedDB is unavailable. `SaveData.version` must equal `SAVE_VERSION`;
+every published version shares the one per-origin save, so a stored save in another format is
+ignored (console warning, fresh profile) and an imported one is refused. The UI auto-saves (debounced) on design,
 script and progress changes.
 
 ### Audio (`src/audio/`)

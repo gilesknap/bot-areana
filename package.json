@@ -8,6 +8,7 @@
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
+    "preview:site": "rm -rf _site && mkdir -p _site/bot-areana && cp -r dist _site/bot-areana/main && cp -r dist _site/bot-areana/v0.1.0 && node scripts/pages-index.mjs _site/bot-areana && vite preview --outDir _site",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
