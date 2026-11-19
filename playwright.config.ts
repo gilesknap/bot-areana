@@ -14,7 +14,21 @@ export default defineConfig({
     trace: 'on',
     screenshot: 'on',
   },
-  projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 900 } } }],
+  // The full suite runs on Chromium; Firefox and WebKit run the smoke spec. CI runs one browser
+  // per job (--project), so they run in parallel.
+  projects: [
+    { name: 'chromium', use: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 900 } } },
+    {
+      name: 'firefox',
+      testMatch: 'smoke.spec.ts',
+      use: { ...devices['Desktop Firefox'], viewport: { width: 1440, height: 900 } },
+    },
+    {
+      name: 'webkit',
+      testMatch: 'smoke.spec.ts',
+      use: { ...devices['Desktop Safari'], viewport: { width: 1440, height: 900 } },
+    },
+  ],
   webServer: {
     command: 'npm run build && npm run preview:site -- --port 4173 --strictPort',
     url: 'http://localhost:4173/bot-areana/main/',

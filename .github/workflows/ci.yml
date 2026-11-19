@@ -50,8 +50,14 @@ jobs:
           name: dist
           path: dist
 
+  # Full suite on Chromium, the smoke spec on Firefox and WebKit (see playwright.config.ts).
   e2e:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, firefox, webkit]
+    name: e2e (${{ matrix.browser }})
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -59,13 +65,13 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npx playwright install --with-deps chromium
-      - name: Playwright smoke
-        run: npm run test:e2e
+      - run: npx playwright install --with-deps ${{ matrix.browser }}
+      - name: Playwright e2e
+        run: npm run test:e2e -- --project=${{ matrix.browser }}
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: playwright-report
+          name: playwright-report-${{ matrix.browser }}
           path: |
             playwright-report
             test-results
