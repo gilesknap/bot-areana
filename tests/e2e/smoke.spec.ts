@@ -15,12 +15,13 @@ test('build a bot, run level 1, see victory', async ({ page }) => {
   await expect(page.getByRole('complementary', { name: 'Mission briefing' })).toBeVisible();
   await shot(page, '1-campaign');
 
-  // Workshop: take the default wheels off, then fit them again from the parts bin.
+  // Workshop: take the default wheels off, then fit them again from the parts bin. The drive
+  // train's outline wraps the centre slot, so click its label rather than the middle of it.
   await page.getByRole('link', { name: 'Build your bot →' }).click();
-  await page.getByRole('button', { name: /^Drive train: Wheels/ }).click();
+  await page.getByRole('button', { name: /^Drive train: Wheels/ }).locator('.bp-part-name').click();
   await expect(page.getByRole('button', { name: 'Drive train: empty' })).toBeVisible();
   await page.locator('button.part[data-part="wheels"]').click();
-  await page.getByRole('button', { name: 'Drive train: empty' }).click();
+  await page.getByRole('button', { name: 'Drive train: empty' }).locator('.bp-part-name').click();
   await expect(page.getByRole('button', { name: /^Drive train: Wheels/ })).toBeVisible();
   await shot(page, '2-workshop');
 
