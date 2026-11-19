@@ -325,6 +325,20 @@ describe('sensors', () => {
     expect(h.call('front_bumper', 'hit')).toBe(false);
     expect(h.events('bump')[0]).toMatchObject({ botId: 'player', side: 'front' });
   });
+
+  it('bump reports once per new contact, not while still pressing into the wall', () => {
+    const level = makeLevel({ spawn: { x: 100, y: 100, heading: 0 } });
+    const h = new Harness(level, { chassis: 'chassis_s', drive: 'wheels', slots: { front: 'bump' } });
+    h.call('drive', 'forward', 1000, false);
+    while (h.call('front_bumper', 'hit') !== true) h.wait(0.1);
+    h.wait(0.3); // still driving into the wall
+    expect(h.call('front_bumper', 'hit')).toBe(false);
+    h.call('drive', 'backward', 30, true);
+    h.call('drive', 'forward', 1000, false);
+    h.wait(1);
+    expect(h.call('front_bumper', 'hit')).toBe(true);
+    expect(h.events('bump')).toHaveLength(2);
+  });
 });
 
 describe('weapons, damage and energy', () => {

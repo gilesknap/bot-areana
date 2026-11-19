@@ -431,6 +431,10 @@ export class Match implements SimMatch, BehaviourWorld {
     for (const c of this.controllers) c.think(this);
     for (const b of this.bots) if (b.alive) this.updateEnergy(b);
     const before = this.bots.map((b) => ({ x: b.x, y: b.y }));
+    for (const b of this.bots) {
+      b.prevContact = b.contact;
+      b.contact = new Set();
+    }
     for (const b of this.bots) if (b.alive) this.updateDrive(b);
     this.collideBots();
     this.bots.forEach((b, i) => (b.lastMove = { x: b.x - before[i]!.x, y: b.y - before[i]!.y }));
@@ -554,12 +558,18 @@ export class Match implements SimMatch, BehaviourWorld {
     }
   }
 
-  /** Contact on the side facing away from `push`: latch bump, kill velocity into it. */
+  /**
+   * Contact on the side facing away from `push`: latch a bump if that side was not already
+   * touching last tick (pressing on into a wall is not a new bump), kill velocity into it.
+   */
   private touched(b: SimBot, push: Vec2): void {
     const side = sideFor(b.heading, headingTo({ x: 0, y: 0 }, { x: -push.x, y: -push.y }));
-    if (!b.bumped[side]) {
-      b.bumped[side] = true;
-      if (b.partIn(side) === 'bump') this.events.push({ type: 'bump', botId: b.id, side });
+    if (!b.contact.has(side)) {
+      b.contact.add(side);
+      if (!b.prevContact.has(side)) {
+        b.bumped[side] = true;
+        if (b.partIn(side) === 'bump') this.events.push({ type: 'bump', botId: b.id, side });
+      }
     }
     if (b.hover) {
       const len = Math.hypot(push.x, push.y) || 1;

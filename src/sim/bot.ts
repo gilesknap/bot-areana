@@ -45,8 +45,11 @@ export class SimBot {
   command: DriveCommand | null = null;
   /** Ticks until the blaster may fire again. */
   cooldown = 0;
-  /** Latched bump per side, cleared when read. */
+  /** Latched bump per side, set once per new contact and cleared when read. */
   readonly bumped: Record<DirectionalSlot, boolean> = { front: false, right: false, rear: false, left: false };
+  /** Sides touching something this tick, and last tick (a contact that carries on is not a new bump). */
+  contact = new Set<DirectionalSlot>();
+  prevContact = new Set<DirectionalSlot>();
   /** Speed just before this tick's collisions (for ram damage). */
   impactSpeed = 0;
   /** Ticks until this bot's ram can hurt again. */

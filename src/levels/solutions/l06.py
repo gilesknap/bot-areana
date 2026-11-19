@@ -3,7 +3,6 @@ def bumped():
 
 
 def drive_until_bump():
-    bumped()  # forget any bump left over from the last wall
     bot.drive.forward(1000, wait=False)
     while not bumped():
         bot.wait(0.1)
