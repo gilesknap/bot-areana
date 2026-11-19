@@ -21,8 +21,11 @@ export interface BehaviourWorld {
   fire(bot: SimBot): boolean;
   /** No wall between the two points (bots don't block sight). */
   lineOfSight(from: Vec2, to: Vec2): boolean;
-  /** A body of this radius could drive straight from one point to the other. */
-  clearPath(from: Vec2, to: Vec2, radius: number): boolean;
+  /**
+   * A body of this radius could drive straight from one point to the other without hitting a
+   * wall or, for ground drives, crossing water, a pit or lava.
+   */
+  clearPath(from: Vec2, to: Vec2, radius: number, hover: boolean): boolean;
   /** Kamikaze detonation. */
   explode(bot: SimBot): void;
 }
@@ -190,7 +193,7 @@ export class EnemyController {
 
     let waypoint = target;
     let within = stopWithin;
-    if (!w.clearPath(bot, target, bot.radius)) {
+    if (!w.clearPath(bot, target, bot.radius, bot.hover)) {
       this.pathAge++;
       const moved = this.pathTarget ? distance(this.pathTarget, target) > 40 : true;
       if (this.path.length === 0 || moved || this.pathAge > REPATH_TICKS) {

@@ -596,6 +596,19 @@ describe('enemy behaviours', () => {
     expect(h.bot('c').y).toBeGreaterThan(440);
   });
 
+  it('a ground chaser steers round a pit in its straight line instead of driving in', () => {
+    const map = Array.from({ length: 20 }, (_, r) => (r === 10 ? 'P'.repeat(17) + '...' : '.'.repeat(20)));
+    const level = makeLevel(
+      { map, spawn: { x: 400, y: 700, heading: 0 }, enemies: [enemy('c', 'chase', 400, 100, { design: { chassis: 'chassis_s', drive: 'wheels', slots: {} } })] },
+      20,
+      20,
+    );
+    const h = new Harness(level);
+    h.wait(12);
+    expect(h.bot('c').alive).toBe(true);
+    expect(h.bot('c').y).toBeGreaterThan(440);
+  });
+
   it('patrol follows its route until it sees the player', () => {
     const route = [{ x: 200, y: 200 }, { x: 400, y: 200 }];
     const level = makeLevel({

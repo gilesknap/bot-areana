@@ -400,12 +400,10 @@ export class Match implements SimMatch, BehaviourWorld {
     return this.segmentClear(from, to, this.arena.walls);
   }
 
-  clearPath(from: Vec2, to: Vec2, radius: number): boolean {
-    return this.segmentClear(
-      from,
-      to,
-      [...this.arena.walls, ...this.arena.water].map((w) => inflate(w, radius - 1)),
-    );
+  clearPath(from: Vec2, to: Vec2, radius: number, hover: boolean): boolean {
+    const { walls, water, hazards } = this.arena;
+    const blocking = hover ? walls : [...walls, ...water, ...hazards];
+    return this.segmentClear(from, to, blocking.map((w) => inflate(w, radius - 1)));
   }
 
   private segmentClear(from: Vec2, to: Vec2, rects: Rect[]): boolean {
