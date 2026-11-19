@@ -3,16 +3,31 @@ name: CI
 on:
   push:
     branches: [main, v1]
+    tags: ['v*']
   pull_request:
   workflow_dispatch:
+    inputs:
+      ref:
+        description: >-
+          Tag or full 40-character commit SHA to build with this workflow and publish to GitHub
+          Pages (for back-filling versions made before versioned deploys existed). Leave empty for
+          a plain CI run.
+        required: false
+        default: ''
+      folder:
+        description: Folder to publish under (defaults to the ref, e.g. v0.1.0)
+        required: false
+        default: ''
 
 permissions:
   contents: read
 
-# Never cancel a run on main: it may be part-way through deploying to Pages.
+# One queue per ref, so pushes to main deploy in order (a newer pending run replaces an older
+# pending one). Only pull requests cancel a running run; a push may be part-way through publishing
+# to gh-pages. Back-fill dispatches each get their own group.
 concurrency:
-  group: ci-${{ github.ref }}
-  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+  group: ci-${{ github.event_name == 'workflow_dispatch' && github.run_id || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   test:
@@ -55,24 +70,45 @@ jobs:
             playwright-report
             test-results
 
+  # Publish to one folder of the gh-pages branch (main/, a v* tag, or a back-filled ref), keeping
+  # every other version, and regenerate the root switcher.json and index.html.
+  # Pages serves the branch: Settings -> Pages -> Deploy from a branch -> gh-pages / (root).
   deploy:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: >-
+      (github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')))
+      || (github.event_name == 'workflow_dispatch' && inputs.ref != '')
     needs: [test, e2e]
     runs-on: ubuntu-latest
     permissions:
-      pages: write
-      id-token: write
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+      contents: write
+    # One queue per folder, never cancelled; publish-pages.sh retries if another folder's deploy
+    # pushed to gh-pages first.
+    concurrency:
+      group: pages-${{ inputs.folder || inputs.ref || github.ref_name }}
+      cancel-in-progress: false
+    env:
+      FOLDER: ${{ inputs.folder || inputs.ref || github.ref_name }}
     steps:
-      - uses: actions/download-artifact@v4
+      # This workflow's own commit, for the publish scripts and push credentials.
+      - uses: actions/checkout@v4
+      # The commit to publish (differs from the above only for a back-fill dispatch).
+      - uses: actions/checkout@v4
         with:
-          name: dist
-          path: dist
-      - uses: actions/configure-pages@v5
-      - uses: actions/upload-pages-artifact@v3
+          ref: ${{ inputs.ref || github.sha }}
+          path: build
+      - uses: actions/setup-node@v4
         with:
-          path: dist
-      - id: deployment
-        uses: actions/deploy-pages@v4
+          node-version: 22
+      - name: Build
+        working-directory: build
+        run: |
+          npm ci
+          sha=$(git rev-parse --short HEAD)
+          if [ "$FOLDER" = main ]; then version="main-$sha"; else version="$FOLDER"; fi
+          echo "SOURCE_SHA=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
+          # --base ./ so older refs (built for a fixed /bot-areana/ base) also work from a subfolder.
+          APP_VERSION="$version" npx vite build --base ./
+      - name: Publish to gh-pages
+        run: >-
+          scripts/publish-pages.sh "$FOLDER" build/dist
+          "https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/"

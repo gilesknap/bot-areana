@@ -7,3 +7,4 @@ blob-report/
 _claude/
 *.log
 .DS_Store
+_site/

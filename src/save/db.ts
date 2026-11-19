@@ -1,11 +1,15 @@
 /** IndexedDB persistence for SaveData, with an in-memory fallback when IndexedDB is unavailable. */
 import { openDB, type IDBPDatabase } from 'idb';
 import type { SaveData } from '../shared/save';
-import { defaultSave, parseSave } from './data';
+import { SAVE_VERSION, defaultSave, parseSave } from './data';
 
 const DB_NAME = 'bot-arena';
 const STORE = 'save';
-const KEY = 'data';
+/**
+ * Each save format has its own key, so hopping between published versions (which share this
+ * origin's IndexedDB) never overwrites a save another version can read. Format 1 keeps 'data'.
+ */
+const KEY = SAVE_VERSION === 1 ? 'data' : `data-v${SAVE_VERSION}`;
 
 let dbPromise: Promise<IDBPDatabase | null> | null = null;
 let memory: SaveData | null = null;
@@ -38,8 +42,10 @@ export async function loadSave(): Promise<SaveData> {
   if (raw) {
     try {
       return parseSave(raw);
-    } catch {
-      // Corrupt data: start fresh rather than lock the player out.
+    } catch (e) {
+      // Corrupt, or written by an incompatible version of the game (all published versions share
+      // this origin's save): start fresh rather than lock the player out.
+      console.warn(`Bot Arena: ignoring the stored save and starting a fresh profile. ${(e as Error).message}`);
     }
   }
   const fresh = defaultSave();

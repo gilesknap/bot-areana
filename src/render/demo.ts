@@ -1,7 +1,7 @@
 /**
  * Dev-only renderer demo: a tiny scripted fake sim produces a frame stream so the arena can be
  * looked at (and screenshotted) without Pyodide or the real sim.
- * Open http://localhost:5173/bot-areana/src/render/demo.html  (?t=<tick> pre-seeks, ?speed=2).
+ * Open http://localhost:5173/src/render/demo.html  (?t=<tick> pre-seeks, ?speed=2).
  */
 import { setMuted, sfx, sfxForEvent, unlockAudioOnGesture } from '../audio';
 import { CHASSIS } from '../parts/catalogue';
