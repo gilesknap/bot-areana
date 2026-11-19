@@ -81,6 +81,9 @@ export function executeRun(py: PyodideAPI, createMatch: CreateMatch, req: RunReq
     const frames = match.takeFrames();
     if (frames.length) hooks.onFrames(frames);
   };
+  // Send the start frame now: if the script then loops without calling the bot and the worker
+  // is killed, playback still has a frame to show the error and result at.
+  flush();
 
   const bridge = makeBridge(match, () => {
     if (performance.now() - lastFlush >= flushMs) flush();
