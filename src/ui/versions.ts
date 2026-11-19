@@ -31,7 +31,7 @@ function currentFolder(): string {
 
 /** Settings section: the build label, plus a picker once switcher.json has loaded. */
 export function versionSection(): HTMLElement {
-  const picker = h('div.row');
+  const picker = h('label.toggle');
   void loadVersions().then((versions) => {
     if (versions.length === 0) return;
     const here = currentFolder();
@@ -47,7 +47,7 @@ export function versionSection(): HTMLElement {
       ...(versions.some((v) => v.version === here) ? [] : [h('option', { value: '', selected: true, disabled: true }, here || 'this build')]),
       ...versions.map((v) => h('option', { value: v.version, selected: v.version === here }, v.version)),
     );
-    picker.append(h('span', {}, 'Play another version:'), select);
+    picker.append('Play another version:', select);
   });
   return h(
     'div.settings',
