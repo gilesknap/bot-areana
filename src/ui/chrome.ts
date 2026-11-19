@@ -5,6 +5,7 @@ import { isMuted, setMuted } from '../audio';
 import { LEVELS } from '../levels';
 import { h, icon, pad2, starString, toast } from './dom';
 import type { AppState } from './state';
+import { versionSection } from './versions';
 
 export interface Screen {
   el: HTMLElement;
@@ -77,6 +78,7 @@ function download(filename: string, text: string): void {
 export function openSettings(state: AppState, onSwitched: () => void): void {
   const body = h('div.settings');
   const dialog = openDialog('Settings', body, { wide: true });
+  const version = versionSection();
 
   const render = () => {
     body.replaceChildren();
@@ -123,6 +125,7 @@ export function openSettings(state: AppState, onSwitched: () => void): void {
         h('button.btn', { type: 'button', onclick: () => download('bot-arena-save.json', exportSave(state.data)) }, 'Export save (.json)'),
         h('button.btn', { type: 'button', onclick: () => fileInput.click() }, 'Import save…'),
       ),
+      version,
     );
   };
 
