@@ -45,7 +45,7 @@ function layout(chassis: ChassisId): { body: Box; slots: Record<string, Box> } {
     slots: {
       front: { x: cx - 50, y: body.y - 84, w: 100, h: 70 },
       centre: { x: cx - 50, y: cy - 40, w: 100, h: 80 },
-      rear: { x: cx - 50, y: body.y + body.h + 14, w: 100, h: 70 },
+      rear: { x: cx - 50, y: body.y + body.h + 26, w: 100, h: 70 },
       left: { x: body.x - 140, y: cy - 40, w: 90, h: 80 },
       right: { x: body.x + body.w + 50, y: cy - 40, w: 90, h: 80 },
     },
