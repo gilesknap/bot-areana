@@ -17,7 +17,14 @@ export default defineConfig({
   base: './',
   define: { __APP_VERSION__: JSON.stringify(appVersion()) },
   worker: { format: 'es' },
-  build: { target: 'es2022', chunkSizeWarningLimit: 2000 },
+  build: {
+    target: 'es2022',
+    // The Code & Arena screen is loaded lazily (src/ui/app.ts). Phaser gets a chunk of its own so
+    // it stays cached across app releases; it alone is over Vite's 500 kB warning size.
+    rolldownOptions: {
+      output: { codeSplitting: { groups: [{ name: 'phaser', test: /node_modules[\\/]phaser[\\/]/ }] } },
+    },
+  },
   test: {
     include: ['src/**/*.test.ts'],
     environment: 'node',

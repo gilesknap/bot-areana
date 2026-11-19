@@ -325,6 +325,20 @@ describe('sensors', () => {
     expect(h.call('front_bumper', 'hit')).toBe(false);
     expect(h.events('bump')[0]).toMatchObject({ botId: 'player', side: 'front' });
   });
+
+  it('bump reports once per new contact, not while still pressing into the wall', () => {
+    const level = makeLevel({ spawn: { x: 100, y: 100, heading: 0 } });
+    const h = new Harness(level, { chassis: 'chassis_s', drive: 'wheels', slots: { front: 'bump' } });
+    h.call('drive', 'forward', 1000, false);
+    while (h.call('front_bumper', 'hit') !== true) h.wait(0.1);
+    h.wait(0.3); // still driving into the wall
+    expect(h.call('front_bumper', 'hit')).toBe(false);
+    h.call('drive', 'backward', 30, true);
+    h.call('drive', 'forward', 1000, false);
+    h.wait(1);
+    expect(h.call('front_bumper', 'hit')).toBe(true);
+    expect(h.events('bump')).toHaveLength(2);
+  });
 });
 
 describe('weapons, damage and energy', () => {
@@ -593,6 +607,19 @@ describe('enemy behaviours', () => {
     );
     const h = new Harness(level);
     h.wait(12);
+    expect(h.bot('c').y).toBeGreaterThan(440);
+  });
+
+  it('a ground chaser steers round a pit in its straight line instead of driving in', () => {
+    const map = Array.from({ length: 20 }, (_, r) => (r === 10 ? 'P'.repeat(17) + '...' : '.'.repeat(20)));
+    const level = makeLevel(
+      { map, spawn: { x: 400, y: 700, heading: 0 }, enemies: [enemy('c', 'chase', 400, 100, { design: { chassis: 'chassis_s', drive: 'wheels', slots: {} } })] },
+      20,
+      20,
+    );
+    const h = new Harness(level);
+    h.wait(12);
+    expect(h.bot('c').alive).toBe(true);
     expect(h.bot('c').y).toBeGreaterThan(440);
   });
 

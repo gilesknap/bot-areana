@@ -31,6 +31,8 @@ export class Arena {
   readonly water: Rect[];
   /** solids + water: what blocks wheels and tracks. */
   readonly groundSolids: Rect[];
+  /** Pit and lava tiles merged into rects (enemy ground drives steer round them). */
+  readonly hazards: Rect[];
   readonly markers: Marker[];
   private readonly navCache = new Map<boolean, boolean[]>();
 
@@ -54,6 +56,7 @@ export class Arena {
     }
     this.walls = [...this.mergeTiles('wall'), ...(level.walls ?? []), ...randomWalls];
     this.water = this.mergeTiles('water');
+    this.hazards = [...this.mergeTiles('pit'), ...this.mergeTiles('lava')];
     const { width: w, height: h } = this;
     this.solids = [
       ...this.walls,

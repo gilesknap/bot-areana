@@ -55,8 +55,8 @@ export const l06: LevelDef = {
   ],
   seed: 606,
   starter: `# Fit a bump sensor to the FRONT slot.
-# bot.front_bumper.hit() is True if the front touched something since you
-# last asked, otherwise False. True and False are BOOLEANS.
+# bot.front_bumper.hit() is True if the front bumped into something since
+# you last asked, otherwise False. True and False are BOOLEANS.
 
 # def makes a new function. Its indented block runs each time you call it.
 def drive_until_bump():
@@ -72,7 +72,7 @@ bot.drive.turn(90)
 `,
   hints: [
     'Inside the function: while not bot.front_bumper.hit(): bot.wait(0.1)',
-    'hit() remembers a bump until you ask, so call it once before you set off to forget the last wall. After a bump, bot.drive.backward(22) puts you in the middle of the next corridor.',
+    'After a bump, bot.drive.backward(22) puts you in the middle of the next corridor.',
     'Finish with:  while True:  drive_until_bump()  bot.drive.turn(90). The match ends when the last core is yours.',
   ],
   solution: {

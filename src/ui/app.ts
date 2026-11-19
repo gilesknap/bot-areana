@@ -6,11 +6,10 @@ import { decodeShare, loadSave } from '../save';
 import { unlockAudioOnGesture } from '../audio';
 import { campaignScreen, freePlayScreen } from './campaign';
 import { openDialog, type Screen } from './chrome';
-import { codeArenaScreen } from './codeArena';
 import { h, pad2, toast } from './dom';
 import { highlightPython } from './highlight';
 import { navigate, parseRoute, type Route } from './router';
-import { AppState, levelContext } from './state';
+import { AppState, levelContext, type LevelContext } from './state';
 import { workshopScreen } from './workshop';
 
 const NARROW_KEY = 'bot-arena:narrow-dismissed';
@@ -20,18 +19,32 @@ export async function startApp(root: HTMLElement): Promise<void> {
   unlockAudioOnGesture();
   const state = new AppState(await loadSave());
   let current: Screen | null = null;
+  let generation = 0;
 
-  const render = () => {
+  const render = async () => {
+    const mine = ++generation;
     current?.destroy?.();
-    current = buildScreen(state, parseRoute(location.hash), render);
+    current = null;
+    const next = await buildScreen(state, parseRoute(location.hash), render);
+    if (mine !== generation) {
+      next.destroy?.(); // the route changed again while the screen was loading
+      return;
+    }
+    current = next;
     root.replaceChildren(current.el, narrowNotice());
     window.scrollTo(0, 0);
   };
-  window.addEventListener('hashchange', render);
-  render();
+  window.addEventListener('hashchange', () => void render());
+  await render();
 }
 
-function buildScreen(state: AppState, route: Route, rerender: () => void): Screen {
+/** The Code & Arena screen (Phaser, CodeMirror, the sim) is its own chunk, loaded on first use. */
+async function codeArenaScreen(state: AppState, ctx: LevelContext): Promise<Screen> {
+  const screen = await import('./codeArena');
+  return screen.codeArenaScreen(state, ctx);
+}
+
+function buildScreen(state: AppState, route: Route, rerender: () => void): Screen | Promise<Screen> {
   switch (route.name) {
     case 'campaign':
       return campaignScreen(state, route.levelId, rerender);

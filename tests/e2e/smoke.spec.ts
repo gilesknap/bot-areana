@@ -8,6 +8,8 @@ const SOLUTION = readFileSync(new URL('../../src/levels/solutions/l01.py', impor
 
 test('build a bot, run level 1, see victory', async ({ page }) => {
   const errors = watchBrowser(page);
+  const requested: string[] = [];
+  page.on('request', (r) => requested.push(r.url()));
 
   await page.goto('./');
   await expect(page.getByText('BOT ARENA').first()).toBeVisible();
@@ -24,10 +26,13 @@ test('build a bot, run level 1, see victory', async ({ page }) => {
   await page.getByRole('button', { name: 'Drive train: empty' }).locator('.bp-part-name').click();
   await expect(page.getByRole('button', { name: /^Drive train: Wheels/ })).toBeVisible();
   await shot(page, '2-workshop');
+  // Phaser is in the lazily loaded Code & Arena chunk, not needed by Campaign or Workshop.
+  expect(requested.filter((u) => /\/phaser-[^/]*\.js$/.test(u))).toEqual([]);
 
   // Code & Arena: replace the starter with the reference solution.
   await page.getByRole('link', { name: 'Write the code →' }).click();
   await setCode(page, SOLUTION);
+  expect(requested.some((u) => /\/phaser-[^/]*\.js$/.test(u))).toBe(true);
   await expect(page.getByText('Python is ready', { exact: false })).toBeVisible({ timeout: 90_000 });
   await shot(page, '3-code-arena');
 
