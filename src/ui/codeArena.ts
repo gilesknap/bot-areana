@@ -267,8 +267,8 @@ export function codeArenaScreen(state: AppState, ctx: LevelContext): Screen {
     status.hidden = true;
     editor.showError(null);
     arena.pause();
-    setPlaying(false);
     setPhase('idle');
+    setPlaying(false); // after setPhase: the button's label depends on the phase
     if (toPreview) {
       arena.reset();
       showPreview();
