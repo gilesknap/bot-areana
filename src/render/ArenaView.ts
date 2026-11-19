@@ -18,7 +18,8 @@ import { ArenaScene } from './scene';
 type Unsubscribe = () => void;
 
 export class ArenaView {
-  private game: Phaser.Game;
+  private game?: Phaser.Game;
+  private sized: ResizeObserver;
   private scene: ArenaScene;
   private booted: Promise<void>;
   private loadSeq = 0;
@@ -26,17 +27,24 @@ export class ArenaView {
   constructor(parent: HTMLElement) {
     this.scene = new ArenaScene();
     this.booted = new Promise((resolve) => (this.scene.onBoot = resolve));
-    this.game = new Phaser.Game({
-      type: Phaser.AUTO,
-      parent,
-      backgroundColor: PALETTE.hallFloor,
-      scene: this.scene,
-      banner: false,
-      antialias: true,
-      scale: { mode: Phaser.Scale.RESIZE, width: parent.clientWidth || 880, height: parent.clientHeight || 760 },
-      render: { antialiasGL: true, powerPreference: 'high-performance' },
-      audio: { noAudio: true },
+    // Phaser sizes its WebGL render targets from the parent when it boots, and fails on a 0x0
+    // parent (one not yet in the page), so wait until the parent has a size.
+    this.sized = new ResizeObserver(() => {
+      if (this.game || !parent.clientWidth || !parent.clientHeight) return;
+      this.sized.disconnect();
+      this.game = new Phaser.Game({
+        type: Phaser.AUTO,
+        parent,
+        backgroundColor: PALETTE.hallFloor,
+        scene: this.scene,
+        banner: false,
+        antialias: true,
+        scale: { mode: Phaser.Scale.RESIZE, width: parent.clientWidth, height: parent.clientHeight },
+        render: { antialiasGL: true, powerPreference: 'high-performance' },
+        audio: { noAudio: true },
+      });
     });
+    this.sized.observe(parent);
   }
 
   private get clock() {
@@ -126,6 +134,7 @@ export class ArenaView {
   }
 
   destroy(): void {
-    this.game.destroy(true);
+    this.sized.disconnect();
+    this.game?.destroy(true);
   }
 }
