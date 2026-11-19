@@ -15,7 +15,7 @@ TypeScript (strict) + Vite, Phaser 3 (arena), CodeMirror 6 (editor), Pyodide in 
 | `npm run typecheck` | `tsc --noEmit` |
 | `npm test` | Vitest: unit tests + headless level-solution runs (Pyodide in Node) |
 | `npm run build` | typecheck + `vite build` into `dist/` (base `/bot-areana/` for GitHub Pages) |
-| `npm run test:e2e` | Playwright smoke against `vite preview` |
+| `npm run test:e2e` | Playwright smoke and stuck-loop watchdog against `vite preview` |
 
 CI (`.github/workflows/ci.yml`): typecheck, vitest, build, Playwright (chromium); on push to
 `main` deploys `dist/` to GitHub Pages.
@@ -39,7 +39,7 @@ src/
   save/          IndexedDB persistence, profiles, export/import JSON, share-URL encode/decode
   audio/         procedural jsfxr-style SFX + mute
   levels/        10 LevelDefs, unlock rules, reference solutions (.py) + headless levels test
-tests/e2e/       Playwright smoke
+tests/e2e/       Playwright smoke + watchdog
 ```
 
 Dependency direction (arrows = "imports"):
@@ -290,4 +290,5 @@ no assets, no music.
 - Vitest (`src/**/*.test.ts`, Node): sim physics, damage, energy, per-call tick costs, objectives,
   determinism (same seed → same frames); parts stats; save/share round-trips (`fake-indexeddb`);
   python runtime (sandbox, error mapping) and all level solutions headless.
-- Playwright (`tests/e2e/`): load, build a bot, run level 1, see the victory screen.
+- Playwright (`tests/e2e/`): load, build a bot, run level 1, see the victory screen; run
+  `while True: pass`, see the 'thinking too hard' message, then re-run successfully.
