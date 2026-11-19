@@ -3,7 +3,7 @@
  * using CSS classes (tok-*) coloured in styles.css from the Arena.dc.html code pane.
  */
 import { highlightCode, tagHighlighter, tags as t } from '@lezer/highlight';
-import { pythonLanguage } from '@codemirror/lang-python';
+import { parser as pythonParser } from '@lezer/python';
 
 export const pyHighlighter = tagHighlighter([
   { tag: [t.keyword, t.controlKeyword, t.definitionKeyword, t.moduleKeyword, t.operatorKeyword, t.self], class: 'tok-kw' },
@@ -18,7 +18,7 @@ export const pyHighlighter = tagHighlighter([
 export function highlightPython(code: string): HTMLElement {
   const out = document.createElement('code');
   out.className = 'py';
-  const tree = pythonLanguage.parser.parse(code);
+  const tree = pythonParser.parse(code);
   highlightCode(
     code,
     tree,

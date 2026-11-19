@@ -54,6 +54,12 @@ levels ──> parts, shared (+ python/headless in levels.test.ts only)
 sim ──> parts, shared               save, audio ──> shared
 ```
 
+The Code & Arena screen (`ui/codeArena.ts`) is loaded with a dynamic `import()` from
+`ui/app.ts`, so Phaser, CodeMirror, the sim and the Python client stay out of the main chunk
+(Phaser has a chunk of its own, see `vite.config.ts`). Other screens may import
+`render/glyphs` and `ui/highlight` (which parses with `@lezer/python` directly), but not
+`render`'s index, `ui/editor` or `@codemirror/*`.
+
 `sim` and `python/runtime` must not touch the DOM, Phaser, `Date.now()` or `Math.random()`
 (they run in a worker and in Node, and must be deterministic).
 
