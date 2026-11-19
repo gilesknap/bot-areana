@@ -5,6 +5,7 @@
 import type { PyodideAPI } from 'pyodide';
 import type { MainToWorker, WorkerToMain } from '../shared/protocol';
 import { createMatch } from '../sim';
+import { lockDownGlobals } from './lockdown';
 import { executeRun, prepareRuntime, scriptError } from './runtime';
 import { PYODIDE_CDN } from './version';
 
@@ -12,30 +13,13 @@ const scope = self as unknown as {
   postMessage(message: WorkerToMain): void;
   onmessage: ((event: MessageEvent<MainToWorker>) => void) | null;
 };
-const post = (message: WorkerToMain) => scope.postMessage(message);
-
-/**
- * Scripts can come from strangers via share links. Python-level blocks (bootstrap.py) stop
- * casual access to JavaScript, but Pyodide can't be sealed completely, so the worker also drops
- * every way out: network, storage and nested workers. Nothing here is needed once Pyodide loaded.
- */
-function lockDownGlobals(): void {
-  const names = [
-    'fetch', 'XMLHttpRequest', 'WebSocket', 'WebTransport', 'EventSource', 'indexedDB', 'caches',
-    'importScripts', 'BroadcastChannel', 'Worker', 'SharedWorker',
-  ];
-  for (const name of names) {
-    try {
-      Object.defineProperty(self, name, { value: undefined, configurable: false, writable: false });
-    } catch {
-      // Not present in this browser.
-    }
-  }
-}
+// Kept before lockDownGlobals() removes postMessage, so scripts can't forge results to the page.
+const postMessage = scope.postMessage.bind(scope);
+const post = (message: WorkerToMain) => postMessage(message);
 
 async function boot(): Promise<PyodideAPI> {
   const { loadPyodide } = (await import(/* @vite-ignore */ `${PYODIDE_CDN}pyodide.mjs`)) as typeof import('pyodide');
-  const py = await loadPyodide({ indexURL: PYODIDE_CDN });
+  const py = await loadPyodide({ indexURL: PYODIDE_CDN, env: { PYTHONHASHSEED: '0' } });
   prepareRuntime(py);
   lockDownGlobals();
   return py;

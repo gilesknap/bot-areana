@@ -9,9 +9,10 @@ on:
 permissions:
   contents: read
 
+# Never cancel a run on main: it may be part-way through deploying to Pages.
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
   test:

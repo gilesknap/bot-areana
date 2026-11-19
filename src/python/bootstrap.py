@@ -7,6 +7,7 @@ defines `run_player`, which runtime.ts calls for every run. Talks to JavaScript 
 
 import builtins
 import difflib
+import io
 import json
 import random
 import sys
@@ -14,16 +15,29 @@ import time
 import traceback
 
 # ---- sandbox ----------------------------------------------------------------------------------
-# Modules that reach JavaScript, the network or the host. Removed from the module cache and
-# refused by an import hook, so `import js` fails even via another module's __builtins__.
+# Modules that reach JavaScript, the network or the host (a name blocks its submodules too).
+# Removed from the module cache and refused by an import hook, so `import js` fails even via
+# another module's __builtins__. Python code can't be sealed off completely in Pyodide, so the
+# worker (lockdown.ts) also removes every way out on the JavaScript side.
 BLOCKED_MODULES = frozenset({
-    'js', 'pyodide', 'pyodide_js', '_pyodide', 'micropip',
-    'socket', 'ssl', 'urllib', 'http', 'subprocess', 'webbrowser', 'ctypes',
+    'js', 'pyodide', 'pyodide_js', '_pyodide', '_pyodide_core', 'micropip',
+    'socket', 'ssl', 'urllib.request', 'http', 'subprocess', 'webbrowser', 'ctypes',
 })
 
+
+def _is_blocked(name):
+    parts = name.split('.')
+    return any('.'.join(parts[:i]) in BLOCKED_MODULES for i in range(1, len(parts) + 1))
+
+
 for _name in list(sys.modules):
-    if _name.partition('.')[0] in BLOCKED_MODULES:
+    if _is_blocked(_name):
         del sys.modules[_name]
+
+# Pyodide's own finder serves `js` from a registry, which would bypass a removed meta_path hook.
+for _finder in sys.meta_path:
+    for _name in ('js', 'pyodide_js'):
+        getattr(_finder, 'jsproxies', {}).pop(_name, None)
 
 
 def _blocked_error(name):
@@ -32,7 +46,7 @@ def _blocked_error(name):
 
 class _BlockedFinder:
     def find_spec(self, name, path=None, target=None):
-        if name.partition('.')[0] in BLOCKED_MODULES:
+        if _is_blocked(name):
             raise _blocked_error(name)
         return None
 
@@ -43,7 +57,7 @@ _real_import = builtins.__import__
 
 
 def _guarded_import(name, globals=None, locals=None, fromlist=(), level=0):
-    if name.partition('.')[0] in BLOCKED_MODULES:
+    if _is_blocked(name):
         raise _blocked_error(name)
     return _real_import(name, globals, locals, fromlist, level)
 
@@ -68,6 +82,9 @@ class OutOfEnergy(BotError):
 class PartNotFitted(BotError, AttributeError):
     """The bot doesn't have that part. Fit it in the Workshop. (An AttributeError too, so hasattr works.)"""
 
+
+# Private references, so a script that replaces json.dumps can't break the bridge.
+_dumps, _loads = json.dumps, json.loads
 
 BOT_ERRORS = {'BlasterNotReady': BlasterNotReady, 'OutOfEnergy': OutOfEnergy, 'PartNotFitted': PartNotFitted}
 
@@ -205,7 +222,7 @@ class _Session:
         self.last_call = time.monotonic()
 
     def _send(self, op, payload):
-        reply = json.loads(self.bridge(op, json.dumps(payload)))
+        reply = _loads(self.bridge(op, _dumps(payload)))
         if 'internal' in reply:
             raise _InternalError(reply['internal'])
         return reply
@@ -229,13 +246,29 @@ class _Session:
     def log(self, values):
         self.write(' '.join(str(v) for v in values), 'log')
 
-    def make_print(self):
-        def print(*values, sep=' ', end='\n', file=None, flush=False):
-            if file is not None and file is not sys.stdout and file is not sys.stderr:
-                return builtins.print(*values, sep=sep, end=end, file=file, flush=flush)
-            text = (' ' if sep is None else sep).join(str(v) for v in values)
-            self.write(text, 'stderr' if file is sys.stderr else 'stdout')
-        return print
+
+
+class _Console(io.TextIOBase):
+    """sys.stdout / sys.stderr during a run: sends each complete line to the game console."""
+
+    def __init__(self, session, stream):
+        self._session = session
+        self._stream = stream
+        self._pending = ''
+
+    def writable(self):
+        return True
+
+    def write(self, text):
+        *lines, self._pending = (self._pending + str(text)).split('\n')
+        for line in lines:
+            self._session.write(line, self._stream)
+        return len(text)
+
+    def close_line(self):
+        if self._pending:
+            self._session.write(self._pending, self._stream)
+            self._pending = ''
 
 
 def _stop_player_code():
@@ -253,6 +286,28 @@ def _stop_player_code():
             frame.f_trace = local
             frame.f_trace_lines = True
         frame = frame.f_back
+
+
+def _snapshot_modules():
+    return {name: (mod, dict(mod.__dict__)) for name, mod in list(sys.modules.items())}, list(sys.meta_path)
+
+
+def _restore_modules(saved):
+    """Undo what a script did to shared modules (json.dumps = ..., new imports), so every run
+    starts from the same interpreter state."""
+    modules, meta_path = saved
+    for name in list(sys.modules):
+        if name not in modules:
+            del sys.modules[name]
+    for name, (mod, contents) in modules.items():
+        sys.modules[name] = mod
+        current = mod.__dict__
+        for key in current.keys() - contents.keys():
+            del current[key]
+        for key, value in contents.items():
+            if current.get(key) is not value:
+                current[key] = value
+    sys.meta_path[:] = meta_path
 
 
 def _install_watchdog(session, seconds):
@@ -311,13 +366,15 @@ def run_player(bridge, bot_source, script, seed, watchdog_seconds):
                if isinstance(cls, type) and issubclass(cls, _Part)] + [('Bot.', 'bot.')]
 
     player_builtins = dict(builtins.__dict__)
-    player_builtins.update(print=session.make_print(), input=_no_input, __import__=_guarded_import)
+    player_builtins.update(input=_no_input, __import__=_guarded_import)
     namespace = {
         '__name__': '__main__', '__builtins__': player_builtins, 'bot': bot,
         'BotError': BotError, 'BlasterNotReady': BlasterNotReady,
         'OutOfEnergy': OutOfEnergy, 'PartNotFitted': PartNotFitted,
     }
     random.seed(seed)
+    consoles = _Console(session, 'stdout'), _Console(session, 'stderr')
+    sys.stdout, sys.stderr = consoles
 
     try:
         code = compile(script, 'main.py', 'exec')
@@ -325,17 +382,17 @@ def run_player(bridge, bot_source, script, seed, watchdog_seconds):
             _install_watchdog(session, watchdog_seconds)
         exec(code, namespace)
     except _MatchOver:
-        return json.dumps({'status': 'over'})
+        return _dumps({'status': 'over'})
     except SystemExit:
         pass
     except _Watchdog as exc:
         if session.over:
-            return json.dumps({'status': 'over'})
-        return json.dumps({'status': 'watchdog', 'line': _error_line(exc)})
+            return _dumps({'status': 'over'})
+        return _dumps({'status': 'watchdog', 'line': _error_line(exc)})
     except _InternalError as exc:
-        return json.dumps({'status': 'internal', 'message': str(exc)})
+        return _dumps({'status': 'internal', 'message': str(exc)})
     except BaseException as exc:
-        return json.dumps({
+        return _dumps({
             'status': 'error',
             'type': type(exc).__name__,
             'message': _error_message(exc, renames),
@@ -344,4 +401,10 @@ def run_player(bridge, bot_source, script, seed, watchdog_seconds):
         })
     finally:
         sys.settrace(None)
-    return json.dumps({'status': 'over' if session.over else 'ok'})
+        for console in consoles:
+            console.close_line()
+        _restore_modules(_PRISTINE)
+    return _dumps({'status': 'over' if session.over else 'ok'})
+
+
+_PRISTINE = _snapshot_modules()

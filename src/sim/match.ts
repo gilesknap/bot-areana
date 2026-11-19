@@ -181,15 +181,15 @@ export class Match implements SimMatch, BehaviourWorld {
         return this.after(1, hit);
       }
       case 'blaster.fire': {
-        if (p.cooldown > 0) throw new BotApiError('BlasterNotReady');
-        if (p.energy < PARTS.blaster.blaster!.energyPerShot) throw new BotApiError('OutOfEnergy');
+        if (p.cooldown > 0) return this.fail('BlasterNotReady');
+        if (p.energy < PARTS.blaster.blaster!.energyPerShot) return this.fail('OutOfEnergy');
         this.fire(p);
         return this.after(1, null);
       }
       case 'blaster.ready':
         return this.after(1, this.blasterReady(p));
       case 'shield.on':
-        if (p.energy < 1) throw new BotApiError('OutOfEnergy');
+        if (p.energy < 1) return this.fail('OutOfEnergy');
         this.setShield(p, true);
         return this.after(1, null);
       case 'shield.off':
@@ -213,12 +213,27 @@ export class Match implements SimMatch, BehaviourWorld {
     );
   }
 
+  /**
+   * The script ended. Run the match on while something could still change the result (enemies,
+   * a survive objective, the bot still moving, shots in flight); otherwise end it straight away.
+   */
   finish(): void {
-    while (!this.finished) this.step();
+    const waiting = this.bots.some((b) => b.team === 'enemy' && b.alive) || this.level.objectives.some((o) => o.type === 'survive');
+    if (!this.finished && waiting) this.print('Your script has finished - your bot will sit still until the match ends.', 'stderr');
+    while (!this.finished) {
+      if (!waiting && !this.player.moving && this.projectiles.length === 0) {
+        this.end('script_ended');
+        return;
+      }
+      this.step();
+    }
   }
 
   abort(reason: 'script_error' | 'watchdog' | 'aborted'): void {
-    if (this.finished) return;
+    if (!this.finished) this.end(reason);
+  }
+
+  private end(reason: EndReason): void {
     this.endReason = reason;
     // Flush output and events from the last call in a final, frozen frame.
     if (this.events.length > 0) {
@@ -272,6 +287,12 @@ export class Match implements SimMatch, BehaviourWorld {
         return this.after(1, round1(this._tick / TICK_RATE));
     }
     throw new Error(`bot.${method}() is not part of the bot API`);
+  }
+
+  /** A call that fails still costs its tick (so a retry loop can't freeze the clock), then raises. */
+  private fail(error: 'BlasterNotReady' | 'OutOfEnergy'): never {
+    this.after(1, null);
+    throw new BotApiError(error);
   }
 
   /** Step `ticks` ticks, then return `value` (read before the ticks passed). */

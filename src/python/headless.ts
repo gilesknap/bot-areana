@@ -32,7 +32,7 @@ let pyodide: Promise<PyodideAPI> | undefined;
 /** The shared Node Pyodide instance, sandboxed and ready to run scripts. */
 export function headlessPyodide(): Promise<PyodideAPI> {
   pyodide ??= import('pyodide').then(async ({ loadPyodide }) => {
-    const py = await loadPyodide();
+    const py = await loadPyodide({ env: { PYTHONHASHSEED: '0' } });
     prepareRuntime(py);
     return py;
   });

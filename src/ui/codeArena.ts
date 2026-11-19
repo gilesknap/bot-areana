@@ -35,6 +35,7 @@ const REASON_TEXT: Record<MatchResult['reason'], string> = {
   objectives_complete: 'All objectives complete.',
   bot_destroyed: 'Your bot was destroyed.',
   time_up: 'Out of time.',
+  script_ended: 'Your script finished before the objectives were complete.',
   script_error: 'Your script stopped with an error.',
   watchdog: 'Your script got stuck in a loop.',
   aborted: 'The run was stopped.',
@@ -114,7 +115,17 @@ export function codeArenaScreen(state: AppState, ctx: LevelContext): Screen {
   const hud = new ArenaHud(hudHost);
 
   function setReadout(tick: number) {
-    readout.textContent = `T+ ${formatTicks(tick)} · TICK ${tick} · SEED ${String(level.seed).padStart(4, '0')}`;
+    readout.textContent = `T+ ${formatTicks(tick)} · TICK ${tick} · SEED ${String(seed).padStart(4, '0')}`;
+  }
+
+  // Levels with random walls get a new layout for every run (the preview shows the next one), so
+  // the script has to look rather than remember. Other levels always use the level's seed.
+  let seed = level.seed;
+  let seedUsed = false;
+  function nextSeed(): number {
+    if (level.randomWalls && seedUsed) seed = Math.floor(Math.random() * 10000);
+    seedUsed = false;
+    return seed;
   }
 
   // ---- Run state ----
@@ -160,7 +171,7 @@ export function codeArenaScreen(state: AppState, ctx: LevelContext): Screen {
   /** Arena shows the level with the bot on its start pad, before any run. */
   function showPreview() {
     try {
-      const match = createMatch({ level, design, seed: level.seed, scriptLines: 0 });
+      const match = createMatch({ level, design, seed: nextSeed(), scriptLines: 0 });
       void arena.load(level, match.world);
       hud.load(level, match.world);
       const frames = match.takeFrames();
@@ -197,8 +208,10 @@ export function codeArenaScreen(state: AppState, ctx: LevelContext): Screen {
     }
     if (phase !== 'running') return; // reset while loading
     let started = false;
+    const runSeed = nextSeed();
+    seedUsed = true;
     run = runner.run(
-      { level, design, script, seed: level.seed },
+      { level, design, script, seed: runSeed },
       {
         onStarted: (w: WorldInit) => {
           started = true;

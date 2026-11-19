@@ -205,7 +205,10 @@ One run at a time per worker; each run gets a fresh Python namespace. Messages f
   AttributeError, ZeroDivisionError, game errors, ...). Takes a `flush(frames)` callback.
 - Sandbox: block importing `js`, `pyodide`, `pyodide_js`, `_pyodide`, `pyodide.ffi`,
   `pyodide.http`, `micropip`, `socket`, `urllib`, `http`, `ssl`, `subprocess`, and hide the
-  bridge object from the player's namespace. Shared-URL bots run strangers' code.
+  bridge object from the player's namespace. Shared-URL bots run strangers' code. Python in
+  Pyodide can always find its way back to JavaScript, so the real boundary is `lockdown.ts`: once
+  Pyodide has loaded, the worker removes network, storage, nested workers, `postMessage` (kept
+  privately) and every way to compile code (`eval`, `Function` constructors, string timers).
 - `worker.ts`: module worker; `import(PYODIDE_CDN + 'pyodide.mjs')`, `loadPyodide({ indexURL: PYODIDE_CDN })`,
   posts `ready`, handles `run`.
 - `client.ts` (main thread): `class PythonRunner { ready: Promise<void>; run(req, handlers): { cancel() }; dispose() }`

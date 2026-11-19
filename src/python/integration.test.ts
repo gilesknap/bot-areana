@@ -29,10 +29,28 @@ describe('python + real sim', () => {
     expect(a.frames).toEqual(b.frames);
   });
 
-  it('idles after the script ends until time runs out', async () => {
-    const r = await runMatchHeadless(level, design, 'bot.wait(1)');
+  it('ends the match when the script ends and nothing else can happen', async () => {
+    const r = await runMatchHeadless(level, design, 'bot.drive.forward(50, wait=False)');
+    expect(r.result).toMatchObject({ won: false, reason: 'script_ended' });
+    // The bot finished its move first.
+    expect(r.result.seconds).toBeGreaterThan(0.3);
+    expect(r.result.seconds).toBeLessThan(5);
+  });
+
+  it('idles to the time limit when enemies could still act, and says so', async () => {
+    const withEnemy = makeLevel({ ...level, enemies: [{ id: 'e1', design, behaviour: 'static', spawn: { x: 100, y: 1000, heading: 0 } }] });
+    const r = await runMatchHeadless(withEnemy, design, 'bot.wait(1)');
     expect(r.result).toMatchObject({ won: false, reason: 'time_up' });
     expect(r.result.seconds).toBeGreaterThanOrEqual(30);
+    expect(r.prints.at(-1)).toMatch(/script has finished/);
+  });
+
+  it('a failing call still costs a tick, so a retry loop lets time run out', async () => {
+    const blaster: BotDesign = { chassis: 'chassis_m', drive: 'wheels', slots: { front: 'blaster' } };
+    const script = 'while True:\n    try:\n        bot.blaster.fire()\n    except BotError:\n        pass\n';
+    const r = await runMatchHeadless(level, blaster, script, level.seed, { watchdogMs: 1000 });
+    expect(r.error).toBeUndefined();
+    expect(r.result.reason).toBe('time_up');
   });
 
   it('script errors end the match with the error line', async () => {

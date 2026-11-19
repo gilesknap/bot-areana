@@ -36,6 +36,15 @@ describe('python runtime (real Pyodide, test sim)', () => {
     expect(r.prints[2]).toBe("ScanResult(kind='turret', bearing=45.0, distance=200.0, x=250.0, y=50.0)");
   });
 
+  it('sends sys.stdout, print(end=...) and help() to the console', async () => {
+    const r = await run('import sys\nprint("a", end="")\nprint("b")\nsys.stdout.write("via stdout\\n")\nprint("no newline", end="")');
+    expect(r.error).toBeUndefined();
+    expect(r.prints).toEqual(['ab', 'via stdout', 'no newline']);
+    const h = await run('help(bot.drive.forward)');
+    expect(h.error).toBeUndefined();
+    expect(h.prints.join('\n')).toMatch(/forward\(/);
+  });
+
   it('captures print and bot.log with the tick they happened at', async () => {
     const r = await run('print("a", 1, sep="-")\nbot.wait(1)\nbot.log("b", 2)');
     const prints = r.frames.flatMap((f) => f.events.filter((e) => e.type === 'print').map((e) => ({ tick: f.tick, e })));
@@ -189,6 +198,27 @@ describe('sandbox', () => {
     expect(r.error).toMatchObject({ type: 'ModuleNotFoundError' });
     const r2 = await run('import importlib\nimportlib.import_module("pyodide")');
     expect(r2.error).toMatchObject({ type: 'ModuleNotFoundError' });
+  });
+
+  it('keeps js out of reach even if the import hook is removed', async () => {
+    const r = await run('import sys, builtins\nsys.meta_path.pop(0)\nbuiltins.__import__("js")');
+    expect(r.error).toMatchObject({ type: 'ModuleNotFoundError' });
+    const r2 = await run('import _pyodide_core');
+    expect(r2.error).toMatchObject({ type: 'ModuleNotFoundError' });
+  });
+
+  it("undoes a script's changes to shared modules before the next run", async () => {
+    const r = await run('import json, sys\njson.dumps = None\nsys.meta_path.clear()\nprint("patched")');
+    expect(r.prints).toEqual(['patched']);
+    const r2 = await run('import json, importlib\nprint(json.dumps([1]))\nimportlib.import_module("js")');
+    expect(r2.prints).toEqual(['[1]']);
+    expect(r2.error).toMatchObject({ type: 'ModuleNotFoundError' });
+  });
+
+  it('uses a fixed hash seed, so set order is the same every page load', async () => {
+    const r = await run('print(hash("abc"))');
+    // The value for PYTHONHASHSEED=0.
+    expect(r.prints).toEqual(['-1600925533']);
   });
 
   it('allows ordinary modules', async () => {

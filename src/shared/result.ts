@@ -2,6 +2,8 @@ export type EndReason =
   | 'objectives_complete'
   | 'bot_destroyed'
   | 'time_up'
+  /** The script ended with nothing left that could complete the objectives. */
+  | 'script_ended'
   | 'script_error'
   | 'watchdog'
   | 'aborted';
