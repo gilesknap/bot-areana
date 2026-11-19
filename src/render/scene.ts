@@ -9,7 +9,7 @@ import { distance, headingTo, headingVector, normaliseBearing, TICK_RATE } from 
 import type { LevelDef } from '../shared/level';
 import { PALETTE } from '../shared/palette';
 import { SLOT_ANGLE } from '../shared/parts';
-import { cpuCanvasTexture, FX_RES, makeFxTextures } from './fxTextures';
+import { FX_RES, makeFxTextures } from './fxTextures';
 import { botBody, botHalfExtent, HULL } from './glyphs';
 import { HALL_MARGIN, paintHall, paintLavaGlow, rng, terrainGrid } from './hall';
 import { stateAt, type InterpolatedState } from './interp';
@@ -120,7 +120,7 @@ async function rasterise(textures: Phaser.Textures.TextureManager, key: string, 
   await img.decode();
   const canvas = document.createElement('canvas');
   canvas.width = canvas.height = px;
-  canvas.getContext('2d', { willReadFrequently: true })!.drawImage(img, 0, 0, px, px);
+  canvas.getContext('2d')!.drawImage(img, 0, 0, px, px);
   if (!textures.exists(key)) textures.addCanvas(key, canvas);
 }
 
@@ -299,16 +299,18 @@ export class ArenaScene extends Phaser.Scene {
     const player = world.bots.find((b) => b.team === 'player');
     const input = { level, world, spawn: level.spawn ?? player?.start ?? { x: 60, y: 60, heading: 0 } };
 
-    cpuCanvasTexture(this.textures, 'hall', Math.ceil(fullW * res), Math.ceil(fullH * res), (ctx) => paintHall(ctx, input, res));
+    const hall = this.textures.createCanvas('hall', Math.ceil(fullW * res), Math.ceil(fullH * res))!;
+    paintHall(hall.context, input, res);
+    hall.refresh();
     this.add.image(-M, -M, 'hall').setOrigin(0).setScale(1 / res).setDepth(D.hall);
 
     const grid = terrainGrid(level);
     this.lavaTiles = grid.tiles('lava');
     this.waterTiles = grid.tiles('water');
     if (this.lavaTiles.length) {
-      cpuCanvasTexture(this.textures, 'hall-lava', Math.ceil(fullW * res), Math.ceil(fullH * res), (ctx) =>
-        paintLavaGlow(ctx, input, res),
-      );
+      const glow = this.textures.createCanvas('hall-lava', Math.ceil(fullW * res), Math.ceil(fullH * res))!;
+      paintLavaGlow(glow.context, input, res);
+      glow.refresh();
       this.lavaGlow = this.add
         .image(-M, -M, 'hall-lava')
         .setOrigin(0)
