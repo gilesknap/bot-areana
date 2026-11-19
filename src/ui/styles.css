@@ -1,0 +1,44 @@
+:root {
+  --void: #0b1016;
+  --panel: #111a23;
+  --panel-dark: #0e151d;
+  --panel-active: #16222e;
+  --border: #22303f;
+  --grid: #152030;
+  --ink: #e6edf3;
+  --steel: #93a4b5;
+  --dim: #4a5a6b;
+  --cyan: #3fd0e0;
+  --amber: #ffb547;
+  --signal: #5be39a;
+  --alert: #ff6b7a;
+  --core: #c792ea;
+  --font-display: 'Space Grotesk', sans-serif;
+  --font-body: Inter, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: var(--void);
+  color: var(--ink);
+  font-family: var(--font-body);
+}
+
+.topbar {
+  height: 64px;
+  display: flex;
+  align-items: center;
+  padding: 0 24px;
+  border-bottom: 1px solid var(--border);
+  background: var(--panel-dark);
+}
+
+.brand {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 20px;
+  letter-spacing: 0.04em;
+}

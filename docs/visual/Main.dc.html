@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Bot Arena style guide</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&amp;family=Inter:wght@400;500;600&amp;family=JetBrains+Mono:wght@400;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#3FD0E0}a:hover{color:#8BE8F2}
+</style>
+</helmet>
+<div style="width: 1440px; height: 1180px; box-sizing: border-box; padding: 56px 64px; background-color: #0B1016; background-image: linear-gradient(#152030 1px, transparent 1px), linear-gradient(90deg, #152030 1px, transparent 1px); background-size: 32px 32px; color: #E6EDF3; font-family: Inter, sans-serif; display: flex; flex-direction: column; gap: 40px">
+
+<div style="display: flex; justify-content: space-between; align-items: flex-end">
+<div style="display: flex; flex-direction: column; gap: 8px">
+<div style="font-family: 'JetBrains Mono', monospace; font-size: 13px; letter-spacing: 0.18em; color: #3FD0E0">SPEC SHEET 01 · VISUAL LANGUAGE</div>
+<h1 style="margin: 0; font-family: 'Space Grotesk', sans-serif; font-size: 64px; font-weight: 700; letter-spacing: -0.02em">BOT ARENA</h1>
+<div style="font-size: 18px; color: #93A4B5">Engineering-sim blueprint: neon line-work on a dark grid. Everything drawn in code.</div>
+</div>
+<div style="font-family: 'JetBrains Mono', monospace; font-size: 13px; color: #93A4B5; text-align: right; line-height: 1.6">REV A<br>GRID 32 PX<br>STROKE 2 PX</div>
+</div>
+
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 40px">
+
+<div style="display: flex; flex-direction: column; gap: 16px">
+<div style="font-family: 'Space Grotesk', sans-serif; font-size: 22px; font-weight: 700">Palette</div>
+<div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px">
+<sc-for list="{{swatches}}" as="s" hint-placeholder-count="8">
+<div style="display: flex; flex-direction: column; gap: 8px; padding: 12px; background: #111A23; border: 1px solid #22303F; border-radius: 6px">
+<div style="height: 48px; border-radius: 4px; border: 1px solid #22303F; background: {{s.hex}}"></div>
+<div style="font-size: 14px; font-weight: 600">{{s.name}}</div>
+<div style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #93A4B5">{{s.hex}} · {{s.use}}</div>
+</div>
+</sc-for>
+</div>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 16px">
+<div style="font-family: 'Space Grotesk', sans-serif; font-size: 22px; font-weight: 700">Type</div>
+<div style="display: flex; flex-direction: column; gap: 14px; padding: 20px; background: #111A23; border: 1px solid #22303F; border-radius: 6px">
+<div style="display: flex; align-items: baseline; gap: 16px"><span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #93A4B5; width: 110px">DISPLAY</span><span style="font-family: 'Space Grotesk', sans-serif; font-size: 36px; font-weight: 700">Target Practice</span></div>
+<div style="display: flex; align-items: baseline; gap: 16px"><span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #93A4B5; width: 110px">HEADING</span><span style="font-family: 'Space Grotesk', sans-serif; font-size: 22px; font-weight: 500">Mission briefing</span></div>
+<div style="display: flex; align-items: baseline; gap: 16px"><span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #93A4B5; width: 110px">BODY</span><span style="font-size: 16px; line-height: 1.5">Five turrets guard the yard. They don't move, but they bite.</span></div>
+<div style="display: flex; align-items: baseline; gap: 16px"><span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #93A4B5; width: 110px">LABEL</span><span style="font-family: 'JetBrains Mono', monospace; font-size: 13px; letter-spacing: 0.12em; color: #3FD0E0">WEIGHT 42 / 60 KG</span></div>
+<div style="display: flex; align-items: baseline; gap: 16px"><span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #93A4B5; width: 110px">CODE</span><span style="font-family: 'JetBrains Mono', monospace; font-size: 15px"><span style="color: #C792EA">while</span> bot.radar.scan(): <span style="color: #5BE39A">bot.blaster</span>.fire()</span></div>
+</div>
+</div>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 16px">
+<div style="display: flex; justify-content: space-between; align-items: baseline">
+<div style="font-family: 'Space Grotesk', sans-serif; font-size: 22px; font-weight: 700">Parts · top-down glyphs</div>
+<div style="font-size: 14px; color: #93A4B5">Each glyph is one drawing function; the arena sprite is chassis + fitted glyphs in their slots.</div>
+</div>
+<div style="display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 12px">
+
+<div style="display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 14px; background: #111A23; border: 1px solid #22303F; border-radius: 6px">
+<svg width="80" height="80" viewBox="0 0 80 80" fill="none" stroke="#3FD0E0" stroke-width="2" aria-hidden="true"><rect x="22" y="18" width="36" height="44" rx="6" fill="#3FD0E0" fill-opacity="0.08"/><line x1="40" y1="18" x2="40" y2="28"/><circle cx="40" cy="40" r="4"/></svg>
+<div style="font-size: 13px; font-weight: 600">Chassis</div><div style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #93A4B5">CORE · S/M/L</div>
+</div>
+
+<div style="display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 14px; background: #111A23; border: 1px solid #22303F; border-radius: 6px">
+<svg width="80" height="80" viewBox="0 0 80 80" fill="none" stroke="#3FD0E0" stroke-width="2" aria-hidden="true"><rect x="16" y="20" width="8" height="14" rx="2" fill="#3FD0E0" fill-opacity="0.3"/><rect x="56" y="20" width="8" height="14" rx="2" fill="#3FD0E0" fill-opacity="0.3"/><rect x="16" y="46" width="8" height="14" rx="2" fill="#3FD0E0" fill-opacity="0.3"/><rect x="56" y="46" width="8" height="14" rx="2" fill="#3FD0E0" fill-opacity="0.3"/><rect x="26" y="22" width="28" height="36" rx="4" stroke-dasharray="3 3" stroke="#93A4B5"/></svg>
+<div style="font-size: 13px; font-weight: 600">Wheels</div><div style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #93A4B5">DRIVE</div>
+</div>
+
+<div style="display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 14px; background: #111A23; border: 1px solid #22303F; border-radius: 6px">
+<svg width="80" height="80" viewBox="0 0 80 80" fill="none" stroke="#3FD0E0" stroke-width="2" aria-hidden="true"><rect x="12" y="14" width="12" height="52" rx="3" fill="#3FD0E0" fill-opacity="0.15"/><rect x="56" y="14" width="12" height="52" rx="3" fill="#3FD0E0" fill-opacity="0.15"/><path d="M12 24h12M12 34h12M12 44h12M12 54h12M56 24h12M56 34h12M56 44h12M56 54h12" stroke-width="1.5"/><rect x="26" y="20" width="28" height="40" rx="4" stroke-dasharray="3 3" stroke="#93A4B5"/></svg>
+<div style="font-size: 13px; font-weight: 600">Tracks</div><div style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #93A4B5">DRIVE</div>
+</div>
+
+<div style="display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 14px; background: #111A23; border: 1px solid #22303F; border-radius: 6px">
+<svg width="80" height="80" viewBox="0 0 80 80" fill="none" stroke="#3FD0E0" stroke-width="2" aria-hidden="true"><ellipse cx="40" cy="40" rx="28" ry="30" stroke-dasharray="5 4"/><ellipse cx="40" cy="40" rx="22" ry="24" fill="#3FD0E0" fill-opacity="0.1"/><path d="M30 70l-4 6M40 70v7M50 70l4 6" stroke-width="1.5"/></svg>
+<div style="font-size: 13px; font-weight: 600">Hover</div><div style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #93A4B5">DRIVE</div>
+</div>
+
+<div style="display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 14px; background: #111A23; border: 1px solid #22303F; border-radius: 6px">
+<svg width="80" height="80" viewBox="0 0 80 80" fill="none" stroke="#5BE39A" stroke-width="2" aria-hidden="true"><rect x="32" y="44" width="16" height="12" rx="2" fill="#5BE39A" fill-opacity="0.2"/><path d="M40 44L28 10M40 44L52 10" stroke-dasharray="3 3" stroke-width="1.5"/><path d="M28 10Q40 4 52 10"/></svg>
+<div style="font-size: 13px; font-weight: 600">Rangefinder</div><div style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #93A4B5">SENSOR</div>
+</div>
+
+<div style="display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 14px; background: #111A23; border: 1px solid #22303F; border-radius: 6px">
+<svg width="80" height="80" viewBox="0 0 80 80" fill="none" stroke="#5BE39A" stroke-width="2" aria-hidden="true"><circle cx="40" cy="44" r="8" fill="#5BE39A" fill-opacity="0.2"/><path d="M22 44a18 18 0 0 1 36 0" /><path d="M12 44a28 28 0 0 1 56 0" stroke-dasharray="4 4" stroke-width="1.5"/><line x1="40" y1="44" x2="58" y2="26"/></svg>
+<div style="font-size: 13px; font-weight: 600">Radar</div><div style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #93A4B5">SENSOR</div>
+</div>
+
+<div style="display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 14px; background: #111A23; border: 1px solid #22303F; border-radius: 6px">
+<svg width="80" height="80" viewBox="0 0 80 80" fill="none" stroke="#5BE39A" stroke-width="2" aria-hidden="true"><circle cx="40" cy="40" r="18" fill="#5BE39A" fill-opacity="0.1"/><path d="M40 16v10M40 54v10M16 40h10M54 40h10"/><path d="M40 28l5 12h-10z" fill="#5BE39A"/></svg>
+<div style="font-size: 13px; font-weight: 600">Compass/GPS</div><div style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #93A4B5">SENSOR</div>
+</div>
+
+<div style="display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 14px; background: #111A23; border: 1px solid #22303F; border-radius: 6px">
+<svg width="80" height="80" viewBox="0 0 80 80" fill="none" stroke="#5BE39A" stroke-width="2" aria-hidden="true"><path d="M18 30h44" stroke-width="5" stroke-linecap="round"/><path d="M26 30v10M54 30v10"/><rect x="24" y="40" width="32" height="24" rx="4" stroke-dasharray="3 3" stroke="#93A4B5"/></svg>
+<div style="font-size: 13px; font-weight: 600">Bump sensor</div><div style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #93A4B5">SENSOR</div>
+</div>
+
+<div style="display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 14px; background: #111A23; border: 1px solid #22303F; border-radius: 6px">
+<svg width="80" height="80" viewBox="0 0 80 80" fill="none" stroke="#FF6B7A" stroke-width="2" aria-hidden="true"><rect x="30" y="42" width="20" height="18" rx="3" fill="#FF6B7A" fill-opacity="0.2"/><rect x="36" y="14" width="8" height="28" rx="1"/><circle cx="40" cy="8" r="3" fill="#FF6B7A"/></svg>
+<div style="font-size: 13px; font-weight: 600">Blaster</div><div style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #93A4B5">OFFENSE</div>
+</div>
+
+<div style="display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 14px; background: #111A23; border: 1px solid #22303F; border-radius: 6px">
+<svg width="80" height="80" viewBox="0 0 80 80" fill="none" stroke="#FF6B7A" stroke-width="2" aria-hidden="true"><path d="M18 44L26 18L34 44M32 44L40 12L48 44M46 44L54 18L62 44" fill="#FF6B7A" fill-opacity="0.15"/><path d="M16 44h48" stroke-width="3"/></svg>
+<div style="font-size: 13px; font-weight: 600">Ram spike</div><div style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #93A4B5">OFFENSE</div>
+</div>
+
+<div style="display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 14px; background: #111A23; border: 1px solid #22303F; border-radius: 6px">
+<svg width="80" height="80" viewBox="0 0 80 80" fill="none" stroke="#FF6B7A" stroke-width="2" aria-hidden="true"><rect x="28" y="18" width="24" height="28" rx="4" fill="#FF6B7A" fill-opacity="0.15"/><circle cx="40" cy="62" r="7"/><path d="M40 55v-3M47 62h3M33 62h-3M40 69v3" stroke-width="1.5"/><path d="M40 46v6" stroke-dasharray="2 2"/></svg>
+<div style="font-size: 13px; font-weight: 600">Mine dropper</div><div style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #93A4B5">OFFENSE · LATER</div>
+</div>
+
+<div style="display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 14px; background: #111A23; border: 1px solid #22303F; border-radius: 6px">
+<svg width="80" height="80" viewBox="0 0 80 80" fill="none" stroke="#FFB547" stroke-width="2" aria-hidden="true"><path d="M20 16L30 12V68L20 64Z" fill="#FFB547" fill-opacity="0.25"/><path d="M60 16L50 12V68L60 64Z" fill="#FFB547" fill-opacity="0.25"/><path d="M24 26v28M56 26v28" stroke-width="1"/></svg>
+<div style="font-size: 13px; font-weight: 600">Armour plate</div><div style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #93A4B5">DEFENSE</div>
+</div>
+
+<div style="display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 14px; background: #111A23; border: 1px solid #22303F; border-radius: 6px">
+<svg width="80" height="80" viewBox="0 0 80 80" fill="none" stroke="#FFB547" stroke-width="2" aria-hidden="true"><circle cx="40" cy="40" r="30" stroke-dasharray="6 4" fill="#FFB547" fill-opacity="0.06"/><path d="M40 24l12 5v10c0 9-6 14-12 17-6-3-12-8-12-17V29z" fill="#FFB547" fill-opacity="0.2"/></svg>
+<div style="font-size: 13px; font-weight: 600">Shield gen</div><div style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #93A4B5">DEFENSE</div>
+</div>
+
+<div style="display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 14px; background: #111A23; border: 1px solid #22303F; border-radius: 6px">
+<svg width="80" height="80" viewBox="0 0 80 80" fill="none" stroke="#C792EA" stroke-width="2" aria-hidden="true"><rect x="24" y="22" width="32" height="40" rx="4" fill="#C792EA" fill-opacity="0.12"/><rect x="34" y="16" width="12" height="6" rx="1"/><path d="M40 32v12M34 38h12"/><path d="M30 54h20" stroke-width="3"/></svg>
+<div style="font-size: 13px; font-weight: 600">Battery</div><div style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #93A4B5">CORE</div>
+</div>
+
+</div>
+</div>
+
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 40px">
+
+<div style="display: flex; flex-direction: column; gap: 16px">
+<div style="font-family: 'Space Grotesk', sans-serif; font-size: 22px; font-weight: 700">Composed bots</div>
+<div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px">
+<div style="display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 16px; background: #111A23; border: 1px solid #22303F; border-radius: 6px">
+<svg width="120" height="120" viewBox="0 0 120 120" fill="none" stroke-width="2" role="img" aria-label="Player bot: wheels, rangefinder, blaster"><path d="M60 34L46 8M60 34L74 8" stroke="#5BE39A" stroke-dasharray="3 3" stroke-width="1.5"/><rect x="34" y="34" width="10" height="16" rx="2" stroke="#3FD0E0" fill="#3FD0E0" fill-opacity="0.3"/><rect x="76" y="34" width="10" height="16" rx="2" stroke="#3FD0E0" fill="#3FD0E0" fill-opacity="0.3"/><rect x="34" y="70" width="10" height="16" rx="2" stroke="#3FD0E0" fill="#3FD0E0" fill-opacity="0.3"/><rect x="76" y="70" width="10" height="16" rx="2" stroke="#3FD0E0" fill="#3FD0E0" fill-opacity="0.3"/><rect x="44" y="34" width="32" height="54" rx="6" stroke="#3FD0E0" fill="#3FD0E0" fill-opacity="0.1"/><rect x="54" y="30" width="12" height="8" rx="1" stroke="#5BE39A" fill="#0B1016"/><rect x="57" y="50" width="6" height="22" stroke="#FF6B7A" fill="#0B1016"/><rect x="50" y="76" width="20" height="8" rx="2" stroke="#C792EA"/></svg>
+<div style="font-size: 13px; font-weight: 600">Player · scout</div><div style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #93A4B5">CYAN HULL</div>
+</div>
+<div style="display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 16px; background: #111A23; border: 1px solid #22303F; border-radius: 6px">
+<svg width="120" height="120" viewBox="0 0 120 120" fill="none" stroke-width="2" role="img" aria-label="Enemy bot: tracks, armour, ram spike"><rect x="26" y="26" width="14" height="70" rx="3" stroke="#FFB547" fill="#FFB547" fill-opacity="0.15"/><rect x="80" y="26" width="14" height="70" rx="3" stroke="#FFB547" fill="#FFB547" fill-opacity="0.15"/><path d="M26 38h14M26 50h14M26 62h14M26 74h14M26 86h14M80 38h14M80 50h14M80 62h14M80 74h14M80 86h14" stroke="#FFB547" stroke-width="1.2"/><rect x="40" y="30" width="40" height="62" rx="5" stroke="#FFB547" fill="#FFB547" fill-opacity="0.08"/><path d="M42 30L48 14L54 30M54 30L60 10L66 30M66 30L72 14L78 30" stroke="#FF6B7A" fill="#FF6B7A" fill-opacity="0.2"/><path d="M42 40v44M78 40v44" stroke="#FFB547" stroke-width="4"/></svg>
+<div style="font-size: 13px; font-weight: 600">Enemy · brute</div><div style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #93A4B5">AMBER HULL</div>
+</div>
+<div style="display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 16px; background: #111A23; border: 1px solid #22303F; border-radius: 6px">
+<svg width="120" height="120" viewBox="0 0 120 120" fill="none" stroke-width="2" role="img" aria-label="Hover bot with radar and shield"><circle cx="60" cy="60" r="50" stroke="#FFB547" stroke-dasharray="6 5" fill="#FFB547" fill-opacity="0.04"/><ellipse cx="60" cy="62" rx="30" ry="34" stroke="#3FD0E0" stroke-dasharray="5 4"/><ellipse cx="60" cy="62" rx="22" ry="26" stroke="#3FD0E0" fill="#3FD0E0" fill-opacity="0.1"/><path d="M48 46a12 12 0 0 1 24 0" stroke="#5BE39A"/><circle cx="60" cy="46" r="4" stroke="#5BE39A" fill="#5BE39A" fill-opacity="0.3"/></svg>
+<div style="font-size: 13px; font-weight: 600">Player · hover</div><div style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #93A4B5">SHIELD UP</div>
+</div>
+</div>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 16px">
+<div style="font-family: 'Space Grotesk', sans-serif; font-size: 22px; font-weight: 700">Arena tiles &amp; markers</div>
+<div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px">
+<div style="display: flex; flex-direction: column; gap: 8px; padding: 12px; background: #111A23; border: 1px solid #22303F; border-radius: 6px"><div style="height: 72px; border: 2px solid #5B6B7C; background: repeating-linear-gradient(45deg, #1C2733 0 6px, #141D27 6px 12px)"></div><div style="font-size: 13px; font-weight: 600">Wall</div></div>
+<div style="display: flex; flex-direction: column; gap: 8px; padding: 12px; background: #111A23; border: 1px solid #22303F; border-radius: 6px"><div style="height: 72px; background: radial-gradient(circle at 40% 40%, #FF7A3D, #A3260F 70%); border: 1px solid #FF7A3D"></div><div style="font-size: 13px; font-weight: 600">Lava</div></div>
+<div style="display: flex; flex-direction: column; gap: 8px; padding: 12px; background: #111A23; border: 1px solid #22303F; border-radius: 6px"><div style="height: 72px; background: #0F2A44; border: 1px solid #2F7BBF; background-image: repeating-linear-gradient(0deg, transparent 0 10px, #1D4D7A 10px 11px)"></div><div style="font-size: 13px; font-weight: 600">Water</div></div>
+<div style="display: flex; flex-direction: column; gap: 8px; padding: 12px; background: #111A23; border: 1px solid #22303F; border-radius: 6px"><div style="height: 72px; background: #000000; border: 2px dashed #5B6B7C"></div><div style="font-size: 13px; font-weight: 600">Pit</div></div>
+<div style="display: flex; flex-direction: column; gap: 8px; padding: 12px; background: #111A23; border: 1px solid #22303F; border-radius: 6px"><div style="height: 72px; background-color: #1A1E14; background-image: radial-gradient(#4A5233 2px, transparent 2px); background-size: 10px 10px; border: 1px solid #4A5233"></div><div style="font-size: 13px; font-weight: 600">Rough ground</div></div>
+<div style="display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 12px; background: #111A23; border: 1px solid #22303F; border-radius: 6px"><svg width="72" height="72" viewBox="0 0 72 72" fill="none" stroke="#5BE39A" stroke-width="2" aria-hidden="true"><circle cx="36" cy="36" r="26" stroke-dasharray="4 4"/><path d="M28 54V18l20 8-20 8" fill="#5BE39A" fill-opacity="0.3"/></svg><div style="font-size: 13px; font-weight: 600">Goal flag</div></div>
+<div style="display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 12px; background: #111A23; border: 1px solid #22303F; border-radius: 6px"><svg width="72" height="72" viewBox="0 0 72 72" fill="none" stroke="#3FD0E0" stroke-width="2" aria-hidden="true"><circle cx="36" cy="36" r="14"/><circle cx="36" cy="36" r="24" stroke-dasharray="2 5"/><text x="36" y="41" fill="#3FD0E0" stroke="none" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="14">2</text></svg><div style="font-size: 13px; font-weight: 600">Waypoint</div></div>
+<div style="display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 12px; background: #111A23; border: 1px solid #22303F; border-radius: 6px"><svg width="72" height="72" viewBox="0 0 72 72" fill="none" stroke="#C792EA" stroke-width="2" aria-hidden="true"><path d="M36 14l18 10v24L36 58 18 48V24z" fill="#C792EA" fill-opacity="0.2"/><path d="M36 26l8 5v10l-8 5-8-5V31z"/></svg><div style="font-size: 13px; font-weight: 600">Data core</div></div>
+</div>
+</div>
+</div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1180}}'>
+class Component extends DCLogic {
+renderVals() {
+return {
+swatches: [
+{ name: 'Void', hex: '#0B1016', use: 'ground' },
+{ name: 'Panel', hex: '#111A23', use: 'surfaces' },
+{ name: 'Ink', hex: '#E6EDF3', use: 'text' },
+{ name: 'Steel', hex: '#93A4B5', use: 'muted text' },
+{ name: 'Cyan', hex: '#3FD0E0', use: 'player, UI' },
+{ name: 'Amber', hex: '#FFB547', use: 'enemy, defense' },
+{ name: 'Signal', hex: '#5BE39A', use: 'sensors, goals' },
+{ name: 'Alert', hex: '#FF6B7A', use: 'weapons, damage' }
+]
+};
+}
+}
+</script>
+</body>
+</html>

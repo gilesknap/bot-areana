@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Workshop</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&amp;family=Inter:wght@400;500;600&amp;family=JetBrains+Mono:wght@400;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#3FD0E0}a:hover{color:#8BE8F2}
+</style>
+</helmet>
+<div style="width: 1440px; height: 900px; box-sizing: border-box; background: #0B1016; color: #E6EDF3; font-family: Inter, sans-serif; display: flex; flex-direction: column">
+
+<div style="height: 64px; flex-shrink: 0; display: flex; align-items: center; gap: 32px; padding: 0 24px; border-bottom: 1px solid #22303F; background: #0E151D">
+<div style="font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 20px; letter-spacing: 0.04em">BOT ARENA</div>
+<nav style="display: flex; gap: 4px">
+<a href="Workshop.dc.html" style="padding: 10px 16px; border-radius: 4px; background: #16222E; color: #3FD0E0; text-decoration: none; font-weight: 600; font-size: 14px; border-bottom: 2px solid #3FD0E0">1 · Workshop</a>
+<a href="Arena.dc.html" style="padding: 10px 16px; border-radius: 4px; color: #93A4B5; text-decoration: none; font-weight: 500; font-size: 14px">2 · Code &amp; Arena</a>
+</nav>
+<div style="flex: 1"></div>
+<div style="font-family: 'JetBrains Mono', monospace; font-size: 13px; color: #93A4B5">LEVEL 05 · TARGET PRACTICE</div>
+</div>
+
+<div style="flex: 1; display: grid; grid-template-columns: 300px minmax(0, 1fr) 340px; min-height: 0">
+
+<div style="border-right: 1px solid #22303F; padding: 20px; display: flex; flex-direction: column; gap: 18px; background: #0E151D">
+<div style="font-family: 'JetBrains Mono', monospace; font-size: 12px; letter-spacing: 0.14em; color: #93A4B5">PARTS BIN</div>
+<sc-for list="{{groups}}" as="g" hint-placeholder-count="4">
+<div style="display: flex; flex-direction: column; gap: 8px">
+<div style="font-size: 13px; font-weight: 600; color: {{g.color}}">{{g.name}}</div>
+<sc-for list="{{g.parts}}" as="p" hint-placeholder-count="2">
+<button type="button" style="display: flex; justify-content: space-between; align-items: center; min-height: 44px; padding: 8px 12px; background: #111A23; border: 1px solid #22303F; border-radius: 4px; color: #E6EDF3; font-family: Inter, sans-serif; font-size: 14px; cursor: grab; text-align: left">
+<span>{{p.name}}</span>
+<span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #93A4B5">{{p.stats}}</span>
+</button>
+</sc-for>
+</div>
+</sc-for>
+<div style="display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 8px 12px; border: 1px dashed #22303F; border-radius: 4px; color: #93A4B5; font-size: 13px">
+<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#93A4B5" stroke-width="1.5" aria-hidden="true"><rect x="3" y="7" width="10" height="7" rx="1"/><path d="M5 7V5a3 3 0 0 1 6 0v2"/></svg>
+Tracks · unlocks at level 8
+</div>
+</div>
+
+<div style="position: relative; display: flex; align-items: center; justify-content: center; background-color: #0B1016; background-image: linear-gradient(#152030 1px, transparent 1px), linear-gradient(90deg, #152030 1px, transparent 1px); background-size: 32px 32px">
+<div style="position: absolute; top: 20px; left: 24px; font-family: 'JetBrains Mono', monospace; font-size: 12px; letter-spacing: 0.14em; color: #93A4B5">CHASSIS M · TOP VIEW · FRONT ↑</div>
+<svg width="560" height="620" viewBox="0 0 560 620" fill="none" role="img" aria-label="Chassis blueprint with five slots">
+<rect x="180" y="150" width="200" height="320" rx="24" stroke="#3FD0E0" stroke-width="2" fill="#3FD0E0" fill-opacity="0.06"/>
+<rect x="140" y="170" width="40" height="80" rx="6" stroke="#3FD0E0" stroke-width="2" fill="#3FD0E0" fill-opacity="0.25"/>
+<rect x="380" y="170" width="40" height="80" rx="6" stroke="#3FD0E0" stroke-width="2" fill="#3FD0E0" fill-opacity="0.25"/>
+<rect x="140" y="370" width="40" height="80" rx="6" stroke="#3FD0E0" stroke-width="2" fill="#3FD0E0" fill-opacity="0.25"/>
+<rect x="380" y="370" width="40" height="80" rx="6" stroke="#3FD0E0" stroke-width="2" fill="#3FD0E0" fill-opacity="0.25"/>
+<rect x="230" y="70" width="100" height="70" rx="6" stroke="#FF6B7A" stroke-width="2" fill="#FF6B7A" fill-opacity="0.12"/>
+<rect x="268" y="30" width="24" height="70" rx="2" stroke="#FF6B7A" stroke-width="2" fill="#0B1016"/>
+<text x="280" y="125" fill="#FF6B7A" font-family="JetBrains Mono, monospace" font-size="13" text-anchor="middle">FRONT</text>
+<rect x="230" y="270" width="100" height="80" rx="6" stroke="#C792EA" stroke-width="2" fill="#C792EA" fill-opacity="0.12"/>
+<text x="280" y="315" fill="#C792EA" font-family="JetBrains Mono, monospace" font-size="13" text-anchor="middle">CENTRE</text>
+<rect x="230" y="480" width="100" height="70" rx="6" stroke="#93A4B5" stroke-width="2" stroke-dasharray="6 5"/>
+<text x="280" y="520" fill="#93A4B5" font-family="JetBrains Mono, monospace" font-size="13" text-anchor="middle">REAR · empty</text>
+<rect x="60" y="270" width="70" height="80" rx="6" stroke="#5BE39A" stroke-width="2" fill="#5BE39A" fill-opacity="0.12"/>
+<text x="95" y="315" fill="#5BE39A" font-family="JetBrains Mono, monospace" font-size="13" text-anchor="middle">LEFT</text>
+<rect x="430" y="270" width="70" height="80" rx="6" stroke="#93A4B5" stroke-width="2" stroke-dasharray="6 5"/>
+<text x="465" y="315" fill="#93A4B5" font-family="JetBrains Mono, monospace" font-size="13" text-anchor="middle">RIGHT</text>
+<path d="M330 105H450" stroke="#22303F"/><text x="456" y="109" fill="#E6EDF3" font-family="Inter, sans-serif" font-size="14">Blaster</text>
+<path d="M60 260V230H40" stroke="#22303F"/><text x="20" y="222" fill="#E6EDF3" font-family="Inter, sans-serif" font-size="14">Rangefinder</text>
+<path d="M330 310H360" stroke="#22303F"/>
+<path d="M420 210H480" stroke="#22303F"/><text x="486" y="214" fill="#E6EDF3" font-family="Inter, sans-serif" font-size="14">Wheels</text>
+<text x="280" y="600" fill="#93A4B5" font-family="Inter, sans-serif" font-size="14" text-anchor="middle">Drag a part onto a glowing slot. Click a fitted part to remove it.</text>
+</svg>
+</div>
+
+<div style="border-left: 1px solid #22303F; padding: 20px; display: flex; flex-direction: column; gap: 20px; background: #0E151D">
+<div style="font-family: 'JetBrains Mono', monospace; font-size: 12px; letter-spacing: 0.14em; color: #93A4B5">SPECIFICATION</div>
+<sc-for list="{{meters}}" as="m" hint-placeholder-count="4">
+<div style="display: flex; flex-direction: column; gap: 6px">
+<div style="display: flex; justify-content: space-between; font-size: 14px"><span>{{m.label}}</span><span style="font-family: 'JetBrains Mono', monospace; color: {{m.color}}">{{m.value}}</span></div>
+<div style="height: 8px; background: #16222E; border-radius: 2px"><div style="height: 8px; width: {{m.pct}}; background: {{m.color}}; border-radius: 2px"></div></div>
+</div>
+</sc-for>
+<div style="font-family: 'JetBrains Mono', monospace; font-size: 12px; letter-spacing: 0.14em; color: #93A4B5; margin-top: 8px">YOUR PYTHON API</div>
+<div style="padding: 14px; background: #0B1016; border: 1px solid #22303F; border-radius: 4px; font-family: 'JetBrains Mono', monospace; font-size: 13px; line-height: 1.8; white-space: pre-line">
+<span style="color: #3FD0E0">bot.drive</span>.forward(d) · .turn(deg)
+<span style="color: #5BE39A">bot.left_sensor</span>.distance()
+<span style="color: #FF6B7A">bot.blaster</span>.fire() · .ready()
+<span style="color: #C792EA">bot.battery</span>.level()
+</div>
+<div style="font-size: 13px; color: #93A4B5; line-height: 1.5">Names come from the parts you fit. Remove a part and its API disappears from your script.</div>
+<div style="flex: 1"></div>
+<a href="Arena.dc.html" style="display: flex; align-items: center; justify-content: center; min-height: 48px; background: #3FD0E0; color: #0B1016; font-weight: 600; font-size: 15px; border-radius: 4px; text-decoration: none">Write the code →</a>
+</div>
+
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+renderVals() {
+return {
+groups: [
+{ name: 'Locomotion', color: '#3FD0E0', parts: [{ name: 'Wheels', stats: '8 kg' }] },
+{ name: 'Sensors', color: '#5BE39A', parts: [{ name: 'Rangefinder', stats: '2 kg · 1 W' }, { name: 'Compass/GPS', stats: '1 kg · 1 W' }, { name: 'Bump sensor', stats: '1 kg' }] },
+{ name: 'Offense', color: '#FF6B7A', parts: [{ name: 'Blaster', stats: '6 kg · 4 W' }] },
+{ name: 'Core', color: '#C792EA', parts: [{ name: 'Battery', stats: '5 kg' }] }
+],
+meters: [
+{ label: 'Weight', value: '22 / 40 kg', pct: '55%', color: '#3FD0E0' },
+{ label: 'Power draw', value: '5 / 8 W', pct: '62%', color: '#C792EA' },
+{ label: 'Top speed', value: '1.4 m/s', pct: '70%', color: '#5BE39A' },
+{ label: 'Hull', value: '100 HP', pct: '50%', color: '#FFB547' }
+]
+};
+}
+}
+</script>
+</body>
+</html>
