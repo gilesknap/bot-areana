@@ -1,4 +1,4 @@
 import './ui/styles.css';
 import { startApp } from './ui/app';
 
-startApp(document.getElementById('app')!);
+void startApp(document.getElementById('app')!);

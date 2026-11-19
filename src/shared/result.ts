@@ -24,6 +24,7 @@ export interface MatchResult {
   ticks: number;
   seconds: number;
   damageTaken: number;
+  /** Percent of capacity (0-100), the same scale as battery.level(). */
   energyLeft: number;
   objectives: ObjectiveProgress[];
 }

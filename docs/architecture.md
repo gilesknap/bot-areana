@@ -46,6 +46,7 @@ Dependency direction (arrows = "imports"):
 
 ```
 ui ──> render, python/client, save, audio, levels, parts, shared
+       (+ sim's createMatch, only to draw the arena before the first run)
 render ──> parts, shared            python ──> sim, parts, shared
 levels ──> parts, shared (+ python/headless in levels.test.ts only)
 sim ──> parts, shared               save, audio ──> shared
@@ -183,6 +184,15 @@ One run at a time per worker; each run gets a fresh Python namespace. Messages f
 - SimEvents for the renderer/audio: `muzzle_flash`, `hit`, `explosion`, `destroyed`, `scan`
   (radar sweep), `range` (rangefinder ping), `bump`, `shield`, `hazard`, `marker`
   (waypoint reached / core collected / flag reached), `objective` (progress), `print`, `low_energy`.
+- Events and prints caused by a call land in the next frame (tick + 1).
+- `WorldInit.walls` does not include the automatic arena edge walls (they sit just outside
+  `0..width` / `0..height`); the renderer draws the hall edge itself.
+- Marker ids: a flag uses its objective id; waypoints and cores use `'<objectiveId>.<n>'`
+  (n counts from 1) with `index` set. Marker events use the same ids.
+- `MatchResult.energyLeft` and the `energy` star criterion's `min` are percent of capacity
+  (0-100), the same scale as `battery.level()`.
+- `BehaviourParams.fireDelay` is extra seconds on top of the blaster's 1 s cooldown.
+- Bolts pass through bots on the shooter's own team; a kamikaze blast only hurts the other team.
 
 ### Python runtime (`src/python/`)
 
@@ -199,9 +209,13 @@ One run at a time per worker; each run gets a fresh Python namespace. Messages f
 - `worker.ts`: module worker; `import(PYODIDE_CDN + 'pyodide.mjs')`, `loadPyodide({ indexURL: PYODIDE_CDN })`,
   posts `ready`, handles `run`.
 - `client.ts` (main thread): `class PythonRunner { ready: Promise<void>; run(req, handlers): { cancel() }; dispose() }`
-  with the watchdog; handlers `onStarted(world)`, `onFrames(frames)`, `onError(err)`, `onDone(result)`.
+  with the watchdog; handlers `onStarted(world)`, `onFrames(frames)`, `onError(err)`, `onDone(result)`,
+  and optional `onFatal(message)` (Python could not load, or the worker failed mid-run).
 - `headless.ts` (Node, tests only): `runHeadless(req: RunRequest): Promise<{ world, frames, result, error?, prints: string[] }>`
   using the `pyodide` npm package (instance cached across calls) and the same `runtime.ts`.
+  An optional second argument `{ createMatch?, watchdogMs? }` swaps the sim (tests) or the
+  in-Python watchdog. `runMatchHeadless(level, design, script, seed?)` is the shortcut the
+  level tests use.
 
 ### Render (`src/render/`)
 
@@ -209,21 +223,25 @@ One run at a time per worker; each run gets a fresh Python namespace. Messages f
   `play()`, `pause()`, `step()`, `setSpeed(PlaybackSpeed)`, `reset()`, `destroy()`, and listeners
   `onTick(cb(tick, frame))`, `onEvent(cb(event, tick))` (fired as playback reaches each event),
   `onEnd(cb)` (playback reached the last frame of a finished run). Playback interpolates
-  between ticks for smooth motion.
+  between ticks for smooth motion. Also `finish()` (no more frames are coming for this run, so
+  `onEnd` may fire) and `rewind()` (replay from tick 0 keeping the frames), plus `playing`,
+  `speed`, `tick` and `bufferedTick` getters.
 - Look must match `Arena.dc.html` "test hall": steel floor plates with rivets, painted hazard
   border and centre ring, level label (`LevelDef.label`) as a faint giant stencil, START hex pad,
   concrete walls with hazard-stripe ends and drop shadows, glowing lava, water, pits, rough
   ground, scorch marks + smoke + wreck debris where things die, headlight beam on the player,
   radar sweep on `scan`, muzzle flash, glowing bolts with trails, LOCK brackets + distance on the
   enemy the player's blaster points at, vignette. Animated (lava glow, sweep, smoke).
-  The HUD overlay (HULL / ENERGY bars, objective counter) is DOM in `ui`, fed by `onTick`.
+  The HUD overlay (HULL / ENERGY bars, objective counter) is DOM: `ArenaHud` in `render/hud.ts`,
+  fed by the UI from `onTick` / `onEvent`.
 - `glyphs.ts`: SVG strings for the UI, matching Main.dc.html: `partGlyphSvg(partId | chassisId, size?)`,
   `botSvg(design, { team })` (composed top-down bot), tile/marker swatches.
 
 ### UI (`src/ui/`)
 
 Hash router (works on GitHub Pages): `#/` campaign, `#/level/<id>` briefing,
-`#/level/<id>/workshop`, `#/level/<id>/code`, `#/free`, `#/share/<payload>`.
+`#/level/<id>/workshop`, `#/level/<id>/code`, `#/free`, `#/free/<id>/workshop`, `#/free/<id>/code`,
+`#/share/<payload>`. Free-play scripts are saved under `'free:<levelId>'`, the design under `'free'`.
 Screens follow Campaign.dc.html, Workshop.dc.html and Arena.dc.html exactly (64 px top bar,
 fonts, colours from `src/shared/palette.ts` / CSS variables in `ui/styles.css`). Code & Arena:
 CodeMirror 6 with Python highlighting in the mockup colours, autocomplete from `botApi(design)`,
@@ -242,12 +260,16 @@ script and progress changes.
 
 ### Audio (`src/audio/`)
 
-`sfx(name: SfxName)`, `setMuted(b)`, `isMuted()`, `sfxForEvent(e: SimEvent): SfxName | null`.
+`sfx(name: SfxName)`, `setMuted(b)`, `isMuted()`, `sfxForEvent(e: SimEvent): SfxName | null`,
+`unlockAudioOnGesture()`. `SfxName` lives in `audio/sfx.ts` (includes `enemy_blaster`,
+`big_explosion`, `shield_on` / `shield_off`, `low_energy`, `victory`, `defeat`).
 Procedural (WebAudio oscillators + noise, jsfxr-style), lazy AudioContext on first user gesture,
 no assets, no music.
 
 ### Levels (`src/levels/`)
 
+- One file per level (`l01.ts`..`l10.ts`); `common.ts` holds the shared enemy designs
+  (`ENEMY`) and the `tile()` helper.
 - `index.ts`: `LEVELS: LevelDef[]` (`l01`..`l10`, design.md campaign table),
   `getLevel(id)`, `isPlayable(profile, id)` (level 1, or the previous level cleared),
   `unlockedFor(profile): Set<UnlockId>` = union of `unlocks` of every playable level.

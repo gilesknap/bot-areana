@@ -17,7 +17,7 @@ export interface Profile {
   levels: Record<string, LevelProgress>;
   /** Last bot design per level id, plus 'free' for free play. */
   designs: Record<string, BotDesign>;
-  /** Last script per level id, plus 'free'. */
+  /** Last script per level id; free play uses 'free:<levelId>' so each level keeps its own. */
   scripts: Record<string, string>;
   /** How many hints have been revealed per level id. */
   hintsShown: Record<string, number>;

@@ -29,7 +29,7 @@ export interface BehaviourParams {
   fleeBelow?: number;
   /** Multiplier on the design's top speed (tuning knob, default 1). */
   speedFactor?: number;
-  /** Extra seconds between shots on top of the blaster cooldown (tuning knob). */
+  /** Extra seconds between shots on top of the blaster's 1 s cooldown (tuning knob). */
   fireDelay?: number;
   /** Ticks to wait before activating. */
   delay?: number;
@@ -57,6 +57,7 @@ export type StarCriterion =
   | { type: 'time'; seconds: number; label: string }
   | { type: 'damage'; max: number; label: string }
   | { type: 'lines'; max: number; label: string }
+  /** min is percent of capacity left (0-100). */
   | { type: 'energy'; min: number; label: string };
 
 export interface LevelDef {

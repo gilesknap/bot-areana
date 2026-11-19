@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Arena render demo</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      body { margin: 0; background: #0b1016; color: #e6edf3; font-family: Inter, sans-serif; }
+      #stage { position: relative; width: 880px; height: 772px; overflow: hidden; background: #0a0e13; }
+      .bar { display: flex; gap: 8px; align-items: center; padding: 8px 16px; background: #0e151d; border-top: 1px solid #22303f; width: 848px; }
+      .bar button { min-width: 44px; height: 36px; background: #111a23; color: #e6edf3; border: 1px solid #22303f; border-radius: 4px; font-family: 'JetBrains Mono', monospace; }
+      #status { margin-left: auto; font-family: 'JetBrains Mono', monospace; color: #93a4b5; }
+      #glyphs { display: flex; flex-wrap: wrap; gap: 8px; padding: 16px; max-width: 1200px; }
+      figure { margin: 0; padding: 8px; background: #111a23; border: 1px solid #22303f; border-radius: 6px; text-align: center; }
+      figcaption { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: #93a4b5; }
+    </style>
+  </head>
+  <body>
+    <div id="stage"></div>
+    <div class="bar">
+      <button id="rewind" aria-label="Rewind">⟲</button>
+      <button id="play" aria-label="Play or pause">▶︎❚❚</button>
+      <button id="step" aria-label="Step one tick">▶︎|</button>
+      <button id="speed-0.5">½×</button><button id="speed-1">1×</button><button id="speed-2">2×</button><button id="speed-4">4×</button>
+      <span id="status"></span>
+    </div>
+    <div id="glyphs"></div>
+    <script type="module" src="./demo.ts"></script>
+  </body>
+</html>

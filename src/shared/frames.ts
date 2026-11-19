@@ -9,7 +9,11 @@ export type Team = 'player' | 'enemy';
 
 /** Static description of the world for a run, sent once before any frames. */
 export interface WorldInit {
-  /** All solid walls after randomWalls were resolved ('#' tiles included, merged where possible). */
+  /**
+   * All solid walls after randomWalls were resolved ('#' tiles included, merged where possible).
+   * The automatic arena edge walls sit just outside 0..width / 0..height and are not listed;
+   * the renderer draws the hall edge itself.
+   */
   walls: Rect[];
   width: number;
   height: number;
@@ -23,7 +27,10 @@ export interface WorldInit {
     maxHp: number;
     maxEnergy: number;
   }>;
-  /** Data cores, flag, waypoints - things drawn on the floor. */
+  /**
+   * Data cores, flag, waypoints - things drawn on the floor. A flag's id is its objective id;
+   * waypoints and cores are '<objectiveId>.<n>' (n from 1) with index set.
+   */
   markers: Array<{ id: string; kind: 'flag' | 'waypoint' | 'core'; x: number; y: number; index?: number }>;
   seed: number;
 }
