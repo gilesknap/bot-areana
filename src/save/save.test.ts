@@ -1,6 +1,6 @@
 import 'fake-indexeddb/auto';
 import { IDBFactory } from 'fake-indexeddb';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { SharePayload } from '../shared/save';
 import {
   activeProfile,
@@ -53,6 +53,21 @@ describe('IndexedDB save', () => {
     d.close();
     const data = await loadSave();
     expect(data.profiles).toHaveLength(1);
+  });
+
+  it('starts fresh, with a warning, on a save written by a newer game version', async () => {
+    const newer = { ...defaultSave(), version: 99, profiles: [{ ...activeProfile(defaultSave()), name: 'Future' }] };
+    const { openDB } = await import('idb');
+    const d = await openDB('bot-arena', 1, { upgrade: (db) => db.createObjectStore('save') });
+    await d.put('save', newer, 'data');
+    d.close();
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const data = await loadSave();
+    expect(data.version).toBe(1);
+    expect(activeProfile(data).name).toBe('Player');
+    expect(warn).toHaveBeenCalledWith(expect.stringMatching(/different version/));
+    warn.mockRestore();
+    expect(() => importSave(JSON.stringify(newer))).toThrow(/different version/);
   });
 });
 

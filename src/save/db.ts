@@ -38,8 +38,10 @@ export async function loadSave(): Promise<SaveData> {
   if (raw) {
     try {
       return parseSave(raw);
-    } catch {
-      // Corrupt data: start fresh rather than lock the player out.
+    } catch (e) {
+      // Corrupt, or written by an incompatible version of the game (all published versions share
+      // this origin's save): start fresh rather than lock the player out.
+      console.warn(`Bot Arena: ignoring the stored save and starting a fresh profile. ${(e as Error).message}`);
     }
   }
   const fresh = defaultSave();

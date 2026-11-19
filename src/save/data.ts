@@ -28,9 +28,16 @@ export function newProfile(name: string): Profile {
   };
 }
 
+/**
+ * Save schema version. Every published version of the game shares one IndexedDB save (same
+ * origin), so bump this whenever the stored shape changes incompatibly: other versions then
+ * refuse the data and start a fresh profile instead of misreading it.
+ */
+export const SAVE_VERSION = 1;
+
 export function defaultSave(): SaveData {
   const profile = newProfile('Player');
-  return { version: 1, activeProfileId: profile.id, profiles: [profile] };
+  return { version: SAVE_VERSION, activeProfileId: profile.id, profiles: [profile] };
 }
 
 function cleanName(name: string): string {
@@ -137,8 +144,11 @@ function parseProfile(v: unknown): Profile | null {
 
 /** Validates and repairs stored or imported data; throws if it is not a Bot Arena save at all. */
 export function parseSave(v: unknown): SaveData {
-  if (!isObj(v) || v.version !== 1 || !Array.isArray(v.profiles)) {
+  if (!isObj(v) || typeof v.version !== 'number' || !Array.isArray(v.profiles)) {
     throw new Error("That file isn't a Bot Arena save.");
+  }
+  if (v.version !== SAVE_VERSION) {
+    throw new Error(`That save is from a different version of Bot Arena (save format ${v.version}, this game reads ${SAVE_VERSION}).`);
   }
   const profiles: Profile[] = [];
   for (const p of v.profiles) {
@@ -147,7 +157,7 @@ export function parseSave(v: unknown): SaveData {
   }
   if (profiles.length === 0) throw new Error('That save has no usable profiles in it.');
   const active = profiles.find((p) => p.id === v.activeProfileId) ?? profiles[0]!;
-  return { version: 1, activeProfileId: active.id, profiles };
+  return { version: SAVE_VERSION, activeProfileId: active.id, profiles };
 }
 
 export function exportSave(data: SaveData): string {
