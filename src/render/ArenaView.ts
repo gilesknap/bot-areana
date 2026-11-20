@@ -28,10 +28,18 @@ export class ArenaView {
     this.scene = new ArenaScene();
     this.booted = new Promise((resolve) => (this.scene.onBoot = resolve));
     // Phaser sizes its WebGL render targets from the parent when it boots, and fails on a 0x0
-    // parent (one not yet in the page), so wait until the parent has a size.
+    // parent (one not yet in the page), so wait until the parent has a size. The canvas has
+    // devicePixelRatio pixels per CSS pixel (zoom 1/dpr shrinks it back), so it is crisp on HiDPI.
     this.sized = new ResizeObserver(() => {
-      if (this.game || !parent.clientWidth || !parent.clientHeight) return;
-      this.sized.disconnect();
+      const w = parent.clientWidth;
+      const h = parent.clientHeight;
+      if (!w || !h) return;
+      const dpr = Math.min(3, window.devicePixelRatio || 1);
+      if (this.game) {
+        this.game.scale.setZoom(1 / dpr);
+        this.game.scale.resize(Math.round(w * dpr), Math.round(h * dpr));
+        return;
+      }
       this.game = new Phaser.Game({
         type: Phaser.AUTO,
         parent,
@@ -39,7 +47,7 @@ export class ArenaView {
         scene: this.scene,
         banner: false,
         antialias: true,
-        scale: { mode: Phaser.Scale.RESIZE, width: parent.clientWidth, height: parent.clientHeight },
+        scale: { mode: Phaser.Scale.NONE, width: Math.round(w * dpr), height: Math.round(h * dpr), zoom: 1 / dpr },
         render: { antialiasGL: true, powerPreference: 'high-performance' },
         audio: { noAudio: true },
       });

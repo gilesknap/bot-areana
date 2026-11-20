@@ -21,6 +21,8 @@ export interface Profile {
   scripts: Record<string, string>;
   /** How many hints have been revealed per level id. */
   hintsShown: Record<string, number>;
+  /** Guided tours this profile has seen (src/ui/tour.ts). */
+  toursSeen: string[];
   settings: { muted: boolean; speed: PlaybackSpeed };
 }
 

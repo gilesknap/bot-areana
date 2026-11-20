@@ -272,7 +272,7 @@ function drawMarkings(ctx: Ctx, w: number, h: number, label: string | undefined,
   ctx.restore();
 }
 
-function drawTerrain(ctx: Ctx, grid: TerrainGrid, rand: () => number): void {
+function drawTerrain(ctx: Ctx, grid: TerrainGrid, rand: () => number, scale: number): void {
   // Rough ground: olive with pebble dots.
   const rough = terrainPath(grid, 'rough', 10);
   ctx.strokeStyle = PALETTE.roughDot;
@@ -311,40 +311,59 @@ function drawTerrain(ctx: Ctx, grid: TerrainGrid, rand: () => number): void {
   ctx.fillStyle = '#000';
   ctx.fill(pit);
 
-  // Lava: crust rim, hot radial gradient, darker veins.
+  // Lava: crust rim, molten orange with hot yellow upwellings, darker cooling edges and crust.
   const lava = terrainPath(grid, 'lava', 16);
   const tiles = grid.tiles('lava');
   if (tiles.length) {
     ctx.strokeStyle = '#3A1408';
     ctx.lineWidth = 8;
     ctx.stroke(lava);
-    const minX = Math.min(...tiles.map((t) => t.x));
-    const minY = Math.min(...tiles.map((t) => t.y));
-    const maxX = Math.max(...tiles.map((t) => t.x + t.w));
-    const maxY = Math.max(...tiles.map((t) => t.y + t.h));
-    // Per-tile gradient so every pool has a hot centre, regardless of shape.
+    const T = TILE_SIZE;
     ctx.save();
     ctx.clip(lava);
-    ctx.fillStyle = PALETTE.lavaLow;
-    ctx.fillRect(minX, minY, maxX - minX, maxY - minY);
+    ctx.fillStyle = PALETTE.lavaMid;
+    ctx.fill(lava);
+    // Hot spots away from the edges, at irregular places so the pool doesn't look tiled.
     for (const t of tiles) {
-      const cx = t.x + t.w * (0.3 + rand() * 0.4);
-      const cy = t.y + t.h * (0.3 + rand() * 0.4);
-      const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, TILE_SIZE * 0.95);
-      g.addColorStop(0, 'rgba(255,226,154,0.95)');
-      g.addColorStop(0.35, 'rgba(255,138,61,0.85)');
-      g.addColorStop(0.8, 'rgba(194,52,15,0.2)');
-      g.addColorStop(1, 'rgba(194,52,15,0)');
+      if (rand() < 0.6) continue;
+      const cx = t.x + T * (0.25 + rand() * 0.5);
+      const cy = t.y + T * (0.25 + rand() * 0.5);
+      const r = T * (0.35 + rand() * 0.4);
+      const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+      g.addColorStop(0, 'rgba(255,241,194,0.95)');
+      g.addColorStop(0.35, 'rgba(255,226,154,0.7)');
+      g.addColorStop(1, 'rgba(255,138,61,0)');
       ctx.fillStyle = g;
-      ctx.fillRect(t.x - 20, t.y - 20, t.w + 40, t.h + 40);
+      ctx.fillRect(cx - r, cy - r, 2 * r, 2 * r);
     }
-    ctx.strokeStyle = 'rgba(122,30,8,0.6)';
-    ctx.lineWidth = 3;
+    // Cooler, darker lava along the shore: blur the surrounding non-lava tiles in over the edge.
+    // (Stroking the path would also mark the seams between tiles.)
+    const shore = new Path2D();
+    for (let r = -1; r <= grid.rows; r++)
+      for (let c = -1; c <= grid.cols; c++)
+        if (grid.at(c, r) !== 'lava') shore.rect(c * T, r * T, T, T);
+    ctx.fillStyle = PALETTE.lavaLow;
+    drawBlurred(ctx, 12 * scale, PALETTE.lavaLow, () => ctx.fill(shore));
+    ctx.fillStyle = PALETTE.lavaEdge;
+    drawBlurred(ctx, 5 * scale, PALETTE.lavaEdge, () => ctx.fill(shore));
+    // Crust: wandering dark lines at random angles.
     for (const t of tiles) {
+      if (rand() < 0.4) continue;
+      const a = rand() * Math.PI;
+      const len = T * (0.8 + rand() * 0.9);
+      const cx = t.x + T * rand();
+      const cy = t.y + T * rand();
+      const dx = (Math.cos(a) * len) / 2;
+      const dy = (Math.sin(a) * len) / 2;
+      const bend = (rand() - 0.5) * T * 0.6;
       ctx.beginPath();
-      const y = t.y + 8 + rand() * 24;
-      ctx.moveTo(t.x - 4, y);
-      ctx.bezierCurveTo(t.x + 12, y + 8, t.x + 26, y - 8, t.x + 44, y + (rand() - 0.5) * 8);
+      ctx.moveTo(cx - dx, cy - dy);
+      ctx.quadraticCurveTo(cx - bend * Math.sin(a), cy + bend * Math.cos(a), cx + dx, cy + dy);
+      ctx.strokeStyle = 'rgba(122,30,8,0.6)';
+      ctx.lineWidth = 3;
+      ctx.stroke();
+      ctx.strokeStyle = 'rgba(58,20,8,0.5)';
+      ctx.lineWidth = 1;
       ctx.stroke();
     }
     ctx.restore();
@@ -465,7 +484,7 @@ export function paintHall(ctx: Ctx, input: HallInput, scale: number): void {
   ctx.fillStyle = spot;
   ctx.fillRect(0, 0, w, h);
   drawMarkings(ctx, w, h, input.level.label, input.spawn, rand);
-  drawTerrain(ctx, grid, rand);
+  drawTerrain(ctx, grid, rand, scale);
   const stripes = hazardPattern(ctx, 7);
   for (const r of interiorWalls(input.world)) drawWall(ctx, r, stripes);
   ctx.restore();
@@ -479,13 +498,16 @@ export function paintHall(ctx: Ctx, input: HallInput, scale: number): void {
   ctx.restore();
 }
 
-/** Blurred orange glow of all lava, for the scene's pulsing additive layer. */
+/** Blurred orange glow spilling out around the lava, for the scene's pulsing additive layer. */
 export function paintLavaGlow(ctx: Ctx, input: HallInput, scale: number): void {
-  const grid = terrainGrid(input.level);
+  const lava = terrainPath(terrainGrid(input.level), 'lava', 16);
   ctx.save();
   ctx.scale(scale, scale);
   ctx.translate(HALL_MARGIN, HALL_MARGIN);
   ctx.fillStyle = 'rgba(255,106,42,0.75)';
-  drawBlurred(ctx, 12 * scale, 'rgb(255,106,42)', () => ctx.fill(terrainPath(grid, 'lava', 16)));
+  drawBlurred(ctx, 12 * scale, 'rgb(255,106,42)', () => ctx.fill(lava));
+  // Not over the lava itself, which would wash its colours out.
+  ctx.globalCompositeOperation = 'destination-out';
+  ctx.fill(lava);
   ctx.restore();
 }

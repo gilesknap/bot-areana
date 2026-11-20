@@ -203,12 +203,27 @@ export function makeFxTextures(textures: Phaser.Textures.TextureManager): void {
     });
   }
   make(textures, 'fx-bracket', 64, 64, (ctx) => {
+    // Drawn at 16 cm: a 2 cm stroke with 12 cm arms (Arena.dc.html LOCK brackets).
     ctx.strokeStyle = PALETTE.cyan;
-    ctx.lineWidth = 3;
+    ctx.lineWidth = 8;
+    ctx.lineCap = 'square';
     ctx.beginPath();
-    ctx.moveTo(2, 22);
-    ctx.lineTo(2, 2);
-    ctx.lineTo(22, 2);
+    ctx.moveTo(4, 48);
+    ctx.lineTo(4, 4);
+    ctx.lineTo(48, 4);
     ctx.stroke();
+  });
+  make(textures, 'fx-outside', 80, 80, (ctx, w, h) => {
+    // Dim floor plates beyond the arena's outer wall (fills the letterbox around the hall).
+    ctx.fillStyle = '#080B0F';
+    ctx.fillRect(0, 0, w, h);
+    ctx.fillStyle = '#0A0E13';
+    ctx.fillRect(1, 1, w - 2, h - 2);
+    ctx.fillStyle = '#121820';
+    for (const [x, y] of [[7, 7], [w - 7, 7], [7, h - 7], [w - 7, h - 7]] as const) {
+      ctx.beginPath();
+      ctx.arc(x, y, 1.6, 0, Math.PI * 2);
+      ctx.fill();
+    }
   });
 }

@@ -580,14 +580,34 @@ a.brand:hover {
 }
 .part-locked {
   display: flex;
-  align-items: center;
-  gap: 8px;
-  min-height: 44px;
-  padding: 8px 12px;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px;
   border: 1px dashed var(--border);
   border-radius: 4px;
   color: var(--steel);
   font-size: 13px;
+}
+.locked-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.locked-head {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  color: var(--dim);
+}
+.locked-row svg {
+  flex-shrink: 0;
+}
+.locked-note {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--dim);
+  white-space: nowrap;
 }
 .blueprint {
   position: relative;
@@ -689,6 +709,11 @@ a.brand:hover {
   to {
     filter: drop-shadow(0 0 9px var(--cyan));
   }
+}
+.meters {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
 }
 .meter {
   display: flex;
@@ -859,12 +884,6 @@ a.brand:hover {
 .api-params code {
   font-family: var(--font-mono);
   color: var(--ink);
-}
-.api-cost {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  color: var(--steel);
-  margin-top: 4px;
 }
 .api-example {
   margin: 6px 0 0;
@@ -1230,4 +1249,182 @@ a.brand:hover {
     height: auto;
     min-height: 100%;
   }
+}
+
+/* ---- Python boot status (Code & Arena run bar) ---- */
+.py-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-right: 16px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  color: var(--steel);
+  white-space: nowrap;
+}
+.py-status::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--amber);
+  box-shadow: 0 0 8px var(--amber);
+}
+.py-status.booting::before {
+  animation: py-pulse 1s ease-in-out infinite alternate;
+}
+.py-status.ready::before {
+  background: var(--signal);
+  box-shadow: 0 0 6px var(--signal);
+}
+.py-status.failed {
+  color: var(--alert);
+}
+.py-status.failed::before {
+  background: var(--alert);
+  box-shadow: none;
+}
+@keyframes py-pulse {
+  from {
+    opacity: 0.25;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* ---- API reference drawer ---- */
+.api-ref > .eyebrow {
+  margin-bottom: 10px;
+}
+.api-jump {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+.api-chip {
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  text-decoration: none;
+}
+.api-chip:hover {
+  border-color: currentColor;
+}
+.api-part {
+  scroll-margin-top: 8px;
+}
+.api-name {
+  color: var(--syn-function);
+  font-weight: 600;
+}
+.api-returns {
+  color: var(--steel);
+}
+.api-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+.api-badge {
+  padding: 2px 6px;
+  border-radius: 3px;
+  background: var(--panel-active);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--steel);
+}
+.api-badge.time {
+  color: var(--cyan);
+}
+.api-badge.energy {
+  color: var(--core);
+}
+.api-badge.raises {
+  color: var(--alert);
+}
+.api-example-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 6px;
+}
+.api-example-row .api-example {
+  flex: 1;
+  margin: 0;
+  cursor: pointer;
+}
+.api-example-row .api-example:hover {
+  border-color: var(--cyan);
+}
+.api-insert {
+  flex-shrink: 0;
+}
+
+/* ---- Guided tour ---- */
+.tour {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  pointer-events: none;
+}
+.tour-spot {
+  position: fixed;
+  border: 2px solid var(--cyan);
+  border-radius: 6px;
+  box-shadow:
+    0 0 0 9999px rgba(5, 8, 11, 0.45),
+    0 0 18px rgba(63, 208, 224, 0.45);
+  transition:
+    left 0.2s,
+    top 0.2s,
+    width 0.2s,
+    height 0.2s;
+}
+.tour-card {
+  position: fixed;
+  width: 300px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px;
+  background: var(--panel-dark);
+  border: 1px solid var(--cyan);
+  border-radius: 6px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.6);
+  pointer-events: auto;
+}
+.tour-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.tour-head .eyebrow {
+  color: var(--cyan);
+}
+.tour-count {
+  font-size: 12px;
+  color: var(--steel);
+}
+.tour-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 18px;
+}
+.tour-text {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--ink-soft);
+}
+.tour-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 4px;
 }

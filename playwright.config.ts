@@ -5,6 +5,9 @@ export default defineConfig({
   timeout: 120_000,
   // No retries: the smoke test must pass first time.
   retries: 0,
+  // Pyodide now preloads as soon as the app opens, and in CI several workers boot it at once,
+  // so the page can stall for a few seconds (a guided-tour skip once took over 5 s).
+  expect: { timeout: 15_000 },
   reporter: process.env.CI ? [['list'], ['github'], ['html', { open: 'never' }]] : 'list',
   // The build is served as GitHub Pages lays it out: one folder per version under /bot-areana/,
   // with switcher.json and a redirecting index.html at the root (npm run preview:site).

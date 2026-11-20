@@ -1,4 +1,4 @@
-/** One PythonRunner for the whole app, created on first use so Pyodide only loads when needed. */
+/** One PythonRunner for the whole app. The app creates it at start-up so Pyodide boots in the background. */
 import { PythonRunner } from '../python/client';
 
 let runner: PythonRunner | null = null;
