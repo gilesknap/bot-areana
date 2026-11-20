@@ -42,43 +42,42 @@ const req = { level: testLevel(), design: testDesign, script: 'pass', seed: 1 };
 describe('PythonRunner', () => {
   let workers: FakeWorker[];
   let runner: PythonRunner;
-  const latest = () => workers.at(-1)!;
 
   beforeEach(() => {
     vi.useFakeTimers();
     workers = [];
-    runner = new PythonRunner({ createWorker: () => (workers.push(new FakeWorker()), latest()) });
+    runner = new PythonRunner({ createWorker: () => (workers.push(new FakeWorker()), workers.at(-1)!) });
   });
   afterEach(() => {
     runner.dispose();
     vi.useRealTimers();
   });
 
-  const startRun = async () => {
+  /** Start a run on `worker` (booting it if need be); it posts the run there. */
+  const startRun = async (worker = workers[0]!) => {
     const h = { onStarted: vi.fn(), onFrames: vi.fn(), onError: vi.fn(), onDone: vi.fn<(r: MatchResult) => void>(), onFatal: vi.fn() };
     const handle = runner.run(req, h);
-    latest().emit({ type: 'ready', pyodideVersion: 'x' });
+    worker.emit({ type: 'ready', pyodideVersion: 'x' });
     await vi.advanceTimersByTimeAsync(0);
-    const runId = (latest().posted[0] as MainToWorker).runId;
-    return { h, handle, runId };
+    const runId = (worker.posted.at(-1) as MainToWorker).runId;
+    return { h, handle, runId, worker };
   };
 
   it('posts the run once Python is ready and relays messages', async () => {
-    const { h, runId } = await startRun();
-    expect(latest().posted[0]).toMatchObject({ type: 'run', script: 'pass', seed: 1 });
-    latest().emit({ type: 'started', runId, world });
-    latest().emit({ type: 'frames', runId, frames: [frame(0)] });
-    latest().emit({ type: 'frames', runId: runId + 99, frames: [frame(5)] }); // stale
+    const { h, runId, worker } = await startRun();
+    expect(worker.posted[0]).toMatchObject({ type: 'run', script: 'pass', seed: 1 });
+    worker.emit({ type: 'started', runId, world });
+    worker.emit({ type: 'frames', runId, frames: [frame(0)] });
+    worker.emit({ type: 'frames', runId: runId + 99, frames: [frame(5)] }); // stale
     const result = { won: true } as MatchResult;
-    latest().emit({ type: 'done', runId, result });
+    worker.emit({ type: 'done', runId, result });
     expect(h.onStarted).toHaveBeenCalledWith(world);
     expect(h.onFrames).toHaveBeenCalledTimes(1);
     expect(h.onDone).toHaveBeenCalledWith(result);
   });
 
   it('watchdog: kills a silent worker, keeps frames and reports a lost run', async () => {
-    const { h, runId } = await startRun();
-    const first = latest();
+    const { h, runId, worker: first } = await startRun();
     first.emit({ type: 'started', runId, world });
     first.emit({ type: 'frames', runId, frames: [frame(0), frame(1, 80), frame(2, 70)] });
     await vi.advanceTimersByTimeAsync(2500);
@@ -95,7 +94,7 @@ describe('PythonRunner', () => {
       objectives: [{ id: 'goal', label: 'Reach the flag', progress: 0, total: 1, done: false }],
     });
     expect(first.terminated).toBe(true);
-    expect(workers).toHaveLength(2);
+    expect(workers).toHaveLength(3); // the spare took over, and a new spare is booting
     // Late messages from the dead run are ignored.
     first.emit({ type: 'done', runId, result: {} as MatchResult });
     expect(h.onDone).toHaveBeenCalledTimes(1);
@@ -111,18 +110,52 @@ describe('PythonRunner', () => {
   it('reports a worker that cannot load Python', async () => {
     const h = { onFatal: vi.fn() };
     runner.run(req, h);
-    latest().emit({ type: 'fatal', message: 'offline' });
+    workers[0]!.emit({ type: 'fatal', message: 'offline' });
     await vi.advanceTimersByTimeAsync(0);
     expect(h.onFatal).toHaveBeenCalledWith('offline');
   });
 
-  it('cancel terminates the worker and starts a fresh one', async () => {
-    const { h, handle, runId } = await startRun();
-    latest().emit({ type: 'started', runId, world });
-    handle.cancel();
-    expect(workers[0]!.terminated).toBe(true);
+  it('cancel terminates the worker and switches to the warm spare', async () => {
+    const { h, handle, runId, worker } = await startRun();
+    // Posting the run started a spare booting in the background.
     expect(workers).toHaveLength(2);
+    const spare = workers[1]!;
+    spare.emit({ type: 'ready', pyodideVersion: 'x' });
+    worker.emit({ type: 'started', runId, world });
+    handle.cancel();
+    expect(worker.terminated).toBe(true);
+    expect(runner.booted).toBe(true); // no reboot wait
     await vi.advanceTimersByTimeAsync(5000);
     expect(h.onError).not.toHaveBeenCalled();
+    // A new spare is already warming up for the next stop.
+    expect(workers).toHaveLength(3);
+    // The next run goes straight to the old spare.
+    const next = await startRun(spare);
+    expect(spare.posted).toEqual([expect.objectContaining({ type: 'run', runId: next.runId })]);
+    expect(workers).toHaveLength(3);
+  });
+
+  it('keeps at most one spare and releases every killed worker', async () => {
+    for (let i = 0; i < 10; i++) {
+      const { handle, runId, worker } = await startRun(workers.find((w) => !w.terminated)!);
+      worker.emit({ type: 'started', runId, world });
+      handle.cancel();
+    }
+    const alive = workers.filter((w) => !w.terminated);
+    expect(alive).toHaveLength(2); // the current worker and its spare
+    expect(workers).toHaveLength(12); // the first, its first spare, and one new spare per kill
+    // Killed workers are detached, so they can be garbage collected.
+    for (const w of workers.filter((w) => w.terminated)) expect(w.onmessage).toBeNull();
+    runner.dispose();
+    expect(workers.every((w) => w.terminated)).toBe(true);
+  });
+
+  it('a run that ends normally keeps its worker and the spare', async () => {
+    const { runId, worker } = await startRun();
+    worker.emit({ type: 'done', runId, result: { won: true } as MatchResult });
+    const again = await startRun(worker);
+    worker.emit({ type: 'done', runId: again.runId, result: { won: true } as MatchResult });
+    expect(workers).toHaveLength(2);
+    expect(workers.some((w) => w.terminated)).toBe(false);
   });
 });

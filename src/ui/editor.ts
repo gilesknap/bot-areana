@@ -1,6 +1,6 @@
 /**
  * CodeMirror 6 Python editor: mockup colours, bot-API autocomplete, error-line highlight,
- * read-only while a run is in progress.
+ * wrapped long lines, read-only while a run is in progress.
  */
 import { autocompletion, completeFromList, type Completion, type CompletionContext, type CompletionResult } from '@codemirror/autocomplete';
 import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands';
@@ -17,6 +17,8 @@ import {
   highlightActiveLineGutter,
   keymap,
   lineNumbers,
+  ViewPlugin,
+  type ViewUpdate,
 } from '@codemirror/view';
 import type { BotDesign } from '../shared/parts';
 import { signature } from '../parts/api';
@@ -40,6 +42,39 @@ const errorLineField = StateField.define<DecorationSet>({
   },
   provide: (f) => EditorView.decorations.from(f),
 });
+
+/**
+ * Long lines wrap (starter comments are wider than the editor), and a wrapped line's
+ * continuation rows line up under its first character instead of at the left edge: each indented
+ * line gets a hanging indent as wide as its leading whitespace.
+ */
+function hangingIndents(view: EditorView): DecorationSet {
+  const decos = [];
+  for (const { from, to } of view.visibleRanges) {
+    for (let pos = from; pos <= to; ) {
+      const line = view.state.doc.lineAt(pos);
+      const indent = /^[ \t]*/.exec(line.text)![0].replace(/\t/g, '    ').length;
+      if (indent) {
+        decos.push(Decoration.line({ attributes: { style: `padding-left: calc(${indent}ch + 6px); text-indent: -${indent}ch` } }).range(line.from));
+      }
+      pos = line.to + 1;
+    }
+  }
+  return Decoration.set(decos);
+}
+
+const wrapIndented = ViewPlugin.fromClass(
+  class {
+    decorations: DecorationSet;
+    constructor(view: EditorView) {
+      this.decorations = hangingIndents(view);
+    }
+    update(u: ViewUpdate) {
+      if (u.docChanged || u.viewportChanged) this.decorations = hangingIndents(u.view);
+    }
+  },
+  { decorations: (v) => v.decorations },
+);
 
 const theme = EditorView.theme(
   {
@@ -139,6 +174,8 @@ export function createEditor(parent: HTMLElement, doc: string, design: BotDesign
         keymap.of([...defaultKeymap, ...historyKeymap, ...searchKeymap, indentWithTab]),
         readOnly.of([]),
         errorLineField,
+        EditorView.lineWrapping,
+        wrapIndented,
         theme,
         EditorView.contentAttributes.of({ 'aria-label': 'Python script editor' }),
         EditorView.updateListener.of((u) => {

@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 import { setCode, shot, watchBrowser } from './helpers';
 
 // Smoke: campaign -> Workshop (fit wheels) -> Code & Arena -> run level 1 at 4x -> victory -> level 2 opens.
@@ -56,3 +56,40 @@ test('build a bot, run level 1, see victory', async ({ page }) => {
 
   expect(errors).toEqual([]);
 });
+
+// Python boots in a worker as soon as the app opens. The page must stay responsive meanwhile:
+// in CI (software WebGL) the idle arena used to redraw every frame, each one read back on the
+// main thread, and a guided-tour click took seconds.
+test('the Code & Arena screen responds while Python boots', async ({ page }) => {
+  const errors = watchBrowser(page, { keepTours: true });
+  const quick = { timeout: 1000 };
+  await page.goto('./#/level/l01/code');
+  const tour = page.getByRole('dialog', { name: 'Guided tour' });
+  await expect(tour).toBeVisible();
+  // Drawing the arena the first time is a one-off cost (seconds on WebKit in CI, uploading the
+  // hall textures): let it pass, then check the page keeps up while Python is still loading.
+  await expect(page.locator('.arena-host[data-drawn]')).toBeAttached({ timeout: 15_000 });
+  await expect.poll(() => frameTime(page), { timeout: 15_000 }).toBeLessThan(100);
+  await expect(page.getByRole('status').filter({ hasText: 'PYTHON' })).toHaveText('PYTHON BOOTING…', quick);
+
+  await tour.getByRole('button', { name: 'Next →' }).click(quick);
+  await expect(tour).toContainText('Every command your fitted parts give you', quick);
+  await tour.getByRole('button', { name: 'Skip tour' }).click(quick);
+  await expect(tour).toBeHidden(quick);
+  await page.getByRole('button', { name: 'API' }).click(quick);
+  await expect(page.getByRole('region', { name: 'API reference' })).toBeVisible(quick);
+  await shot(page, 'responsive-while-booting');
+
+  await page.getByRole('link', { name: 'BOT ARENA' }).click(quick);
+  await page.getByRole('button', { name: /^Level 1: First Steps/ }).click(quick);
+  await expect(page.getByRole('complementary', { name: 'Mission briefing' })).toContainText('400 cm dead ahead', quick);
+  expect(errors).toEqual([]);
+});
+
+/** Milliseconds the page takes to reach its next animation frame. */
+function frameTime(page: Page): Promise<number> {
+  return page.evaluate(() => new Promise<number>((resolve) => {
+    const start = performance.now();
+    requestAnimationFrame(() => resolve(performance.now() - start));
+  }));
+}

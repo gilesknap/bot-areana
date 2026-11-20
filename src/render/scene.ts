@@ -144,6 +144,11 @@ export class ArenaScene extends Phaser.Scene {
   readonly clock = new PlaybackClock();
   listeners: SceneListeners = { tick: new Set(), event: new Set(), end: new Set() };
   onBoot?: () => void;
+  /**
+   * Render only while playing (and once after each change) instead of animating the idle hall.
+   * For software WebGL, where every frame drawn costs a blocking read-back on the main thread.
+   */
+  lowPower = false;
 
   private world?: WorldInit;
   private ready = false;
@@ -207,10 +212,20 @@ export class ArenaScene extends Phaser.Scene {
     this.fitCamera();
     this.ready = true;
     this.renderState(this.currentState());
+    this.wake();
   }
 
   requestStep(): void {
     this.stepRequested = true;
+    this.wake();
+  }
+
+  /** Low power: draw again after a change (the loop sleeps while idle). */
+  wake(): void {
+    const loop = this.sys.game?.loop;
+    if (!this.lowPower || !loop || loop.running) return;
+    loop.resetDelta();
+    loop.wake();
   }
 
   /** Back to tick 0 (frames kept): clears decals, wrecks and effects so the replay starts clean. */
@@ -218,6 +233,7 @@ export class ArenaScene extends Phaser.Scene {
     this.clearDynamic();
     this.clock.rewind();
     if (this.ready) this.renderState(this.currentState());
+    this.wake();
   }
 
   /** Drop the run's frames and show the world at its start. */
@@ -225,6 +241,7 @@ export class ArenaScene extends Phaser.Scene {
     this.clearDynamic();
     this.clock.clear();
     if (this.ready) this.renderState(this.currentState());
+    this.wake();
   }
 
   // ---- Frame loop ----------------------------------------------------------------------------
@@ -257,6 +274,8 @@ export class ArenaScene extends Phaser.Scene {
     this.ambient(delta, fxDt);
     this.renderState(this.currentState(), fxDt);
     if (upd.ended) for (const cb of this.listeners.end) cb();
+    // This frame is still drawn; the loop then stops until wake().
+    if (this.lowPower && !this.clock.playing && !this.stepRequested) this.game.loop.sleep();
   }
 
   private currentState(): InterpolatedState {

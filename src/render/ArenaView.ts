@@ -17,6 +17,24 @@ import { ArenaScene } from './scene';
 
 type Unsubscribe = () => void;
 
+let software: boolean | undefined;
+/**
+ * True when WebGL has no GPU behind it (software rendering, as in headless CI or on a
+ * blocklisted GPU). The browser then composites in software and reads every WebGL frame back
+ * on the main thread, so a hall animating while idle keeps the whole page busy (measured in CI:
+ * ~140 ms per frame, so clicks and typing waited seconds).
+ */
+function softwareWebGL(): boolean {
+  if (software === undefined) {
+    const gl = document.createElement('canvas').getContext('webgl');
+    const info = gl?.getExtension('WEBGL_debug_renderer_info');
+    const renderer = info ? String(gl!.getParameter(info.UNMASKED_RENDERER_WEBGL)) : '';
+    software = /swiftshader|llvmpipe|softpipe|software/i.test(renderer);
+    gl?.getExtension('WEBGL_lose_context')?.loseContext();
+  }
+  return software;
+}
+
 export class ArenaView {
   private game?: Phaser.Game;
   private sized: ResizeObserver;
@@ -24,8 +42,9 @@ export class ArenaView {
   private booted: Promise<void>;
   private loadSeq = 0;
 
-  constructor(parent: HTMLElement) {
+  constructor(private readonly parent: HTMLElement) {
     this.scene = new ArenaScene();
+    this.scene.lowPower = softwareWebGL();
     this.booted = new Promise((resolve) => (this.scene.onBoot = resolve));
     // Phaser sizes its WebGL render targets from the parent when it boots, and fails on a 0x0
     // parent (one not yet in the page), so wait until the parent has a size. The canvas has
@@ -38,6 +57,7 @@ export class ArenaView {
       if (this.game) {
         this.game.scale.setZoom(1 / dpr);
         this.game.scale.resize(Math.round(w * dpr), Math.round(h * dpr));
+        this.scene.wake();
         return;
       }
       this.game = new Phaser.Game({
@@ -63,7 +83,11 @@ export class ArenaView {
   load(level: LevelDef, world: WorldInit): Promise<void> {
     const seq = ++this.loadSeq;
     this.clock.clear();
-    return this.booted.then(() => (seq === this.loadSeq ? this.scene.build(level, world) : undefined));
+    return this.booted.then(async () => {
+      if (seq !== this.loadSeq) return;
+      await this.scene.build(level, world);
+      this.parent.dataset.drawn = ''; // e2e tests wait for the first hall
+    });
   }
 
   /** Append frames from the running match (in tick order). */
@@ -79,6 +103,7 @@ export class ArenaView {
   play(): void {
     if (this.clock.atEnd) this.rewind();
     this.clock.playing = true;
+    this.scene.wake();
   }
 
   pause(): void {
@@ -144,5 +169,6 @@ export class ArenaView {
   destroy(): void {
     this.sized.disconnect();
     this.game?.destroy(true);
+    this.game?.loop.wake(); // Phaser destroys the game on its next step: a sleeping loop never takes one
   }
 }
