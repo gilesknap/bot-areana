@@ -11,7 +11,8 @@ test('DIAG renderer and lag', async ({ page }) => {
       if (now - last > 100) w.__lag.push(Math.round(now - last));
       last = now;
     }, 20);
-    const t = ((window as unknown as { __t: Record<string, number[]> }).__t = {});
+    const t: Record<string, number[]> = {};
+    (window as unknown as { __t: unknown }).__t = t;
     const wrap = (proto: any, name: string) => {
       const orig = proto[name];
       if (!orig) return;
