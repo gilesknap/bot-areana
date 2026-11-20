@@ -16,8 +16,8 @@ for (const name of ['Campaign', 'Workshop', 'Arena']) {
   });
 }
 
-/** Mark the levels before `levelId` cleared and load its reference design and script. */
-async function seedProgress(page: Page, levelId: string): Promise<void> {
+/** Mark the levels before `levelId` cleared and load its reference design and script (or keep the starter). */
+async function seedProgress(page: Page, levelId: string, opts: { starter?: boolean } = {}): Promise<void> {
   const level = getLevel(levelId)!;
   const before = LEVELS.filter((l) => l.number < level.number).map((l) => l.id);
   const script = readFileSync(new URL(`../../src/levels/${level.solution.script}`, import.meta.url), 'utf8');
@@ -43,11 +43,11 @@ async function seedProgress(page: Page, levelId: string): Promise<void> {
       for (const l of before) profile.levels[l] = { cleared: true, bestStars: 3, attempts: 1 };
       profile.designs[id] = design;
       profile.toursSeen = ['workshop', 'code'];
-      profile.scripts[id] = script;
+      if (script !== null) profile.scripts[id] = script;
       store.put(data, 'data');
       await new Promise((resolve) => (tx.oncomplete = resolve));
     },
-    { before, id: level.id, design: level.solution.design, script },
+    { before, id: level.id, design: level.solution.design, script: opts.starter ? null : script },
   );
 }
 
@@ -82,6 +82,20 @@ for (const [levelId, times] of [
     expect(errors).toEqual([]);
   });
 }
+
+// Long starter comments wrap in the editor, continuation rows under the comment's indent.
+test('level 3 starter wraps in the editor', async ({ page }) => {
+  const errors = watchBrowser(page);
+  await seedProgress(page, 'l03', { starter: true });
+  await page.goto('./#/level/l03/code');
+  await expect(page.locator('.cm-content')).toContainText('#');
+  await page.evaluate(() => document.fonts.ready);
+  await page.locator('.editor-wrap').screenshot({ path: 'test-results/screens/game-l03-starter.png' });
+  // No line is wider than the editor.
+  const overflow = await page.locator('.cm-scroller').evaluate((el) => el.scrollWidth - el.clientWidth);
+  expect(overflow).toBeLessThanOrEqual(0);
+  expect(errors).toEqual([]);
+});
 
 test.describe('HiDPI', () => {
   test.use({ deviceScaleFactor: 2 });

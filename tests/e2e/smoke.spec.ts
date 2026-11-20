@@ -56,3 +56,28 @@ test('build a bot, run level 1, see victory', async ({ page }) => {
 
   expect(errors).toEqual([]);
 });
+
+// Python boots in a worker as soon as the app opens. The page must stay responsive meanwhile:
+// in CI (software WebGL) the idle arena used to redraw every frame, each one read back on the
+// main thread, and a guided-tour click took seconds.
+test('the Code & Arena screen responds while Python boots', async ({ page }) => {
+  const errors = watchBrowser(page, { keepTours: true });
+  const quick = { timeout: 1000 };
+  await page.goto('./#/level/l01/code');
+  const tour = page.getByRole('dialog', { name: 'Guided tour' });
+  await expect(tour).toBeVisible();
+  await expect(page.getByRole('status').filter({ hasText: 'PYTHON' })).toHaveText('PYTHON BOOTING…');
+
+  await tour.getByRole('button', { name: 'Next →' }).click(quick);
+  await expect(tour).toContainText('Every command your fitted parts give you', quick);
+  await tour.getByRole('button', { name: 'Skip tour' }).click(quick);
+  await expect(tour).toBeHidden(quick);
+  await page.getByRole('button', { name: 'API' }).click(quick);
+  await expect(page.getByRole('region', { name: 'API reference' })).toBeVisible(quick);
+  await shot(page, 'responsive-while-booting');
+
+  await page.getByRole('link', { name: 'BOT ARENA' }).click(quick);
+  await page.getByRole('button', { name: /^Level 1: First Steps/ }).click(quick);
+  await expect(page.getByRole('complementary', { name: 'Mission briefing' })).toContainText('400 cm dead ahead', quick);
+  expect(errors).toEqual([]);
+});

@@ -2,8 +2,8 @@ import { readFileSync } from 'node:fs';
 import { expect, test } from '@playwright/test';
 import { setCode, shot, watchBrowser } from './helpers';
 
-// A script stuck in a loop is stopped with a friendly message; the worker restarts (and locks
-// itself down again) so the next run works.
+// A script stuck in a loop is stopped with a friendly message; a spare worker (locked down like
+// the first) takes over so the next run works.
 
 const SOLUTION = readFileSync(new URL('../../src/levels/solutions/l01.py', import.meta.url), 'utf8');
 
@@ -21,6 +21,8 @@ test('a stuck loop is stopped and the next run still works', async ({ page }) =>
   await expect(defeat).toBeVisible({ timeout: 30_000 });
   await shot(page, 'watchdog');
   await defeat.getByRole('button', { name: 'Edit & retry' }).click();
+  // The stuck worker was killed; a spare booted during the run takes over without a long reboot.
+  await expect(page.getByRole('status').filter({ hasText: 'PYTHON' })).toHaveText('PYTHON READY');
 
   await setCode(page, SOLUTION);
   await page.getByRole('button', { name: 'Run' }).click();

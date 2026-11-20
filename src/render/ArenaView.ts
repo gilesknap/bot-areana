@@ -17,6 +17,21 @@ import { ArenaScene } from './scene';
 
 type Unsubscribe = () => void;
 
+let software: boolean | undefined;
+/**
+ * True when WebGL has no GPU behind it (software rendering, as in CI or on a blocklisted GPU).
+ * The browser then reads every WebGL frame back on the main thread, so a hall animating while
+ * idle keeps the whole page busy (measured in CI: ~140 ms per frame, the page stalled for seconds).
+ */
+function softwareWebGL(): boolean {
+  if (software === undefined) {
+    const gl = document.createElement('canvas').getContext('webgl', { failIfMajorPerformanceCaveat: true });
+    software = !gl;
+    gl?.getExtension('WEBGL_lose_context')?.loseContext();
+  }
+  return software;
+}
+
 export class ArenaView {
   private game?: Phaser.Game;
   private sized: ResizeObserver;
@@ -26,6 +41,7 @@ export class ArenaView {
 
   constructor(parent: HTMLElement) {
     this.scene = new ArenaScene();
+    this.scene.lowPower = softwareWebGL();
     this.booted = new Promise((resolve) => (this.scene.onBoot = resolve));
     // Phaser sizes its WebGL render targets from the parent when it boots, and fails on a 0x0
     // parent (one not yet in the page), so wait until the parent has a size. The canvas has
@@ -38,6 +54,7 @@ export class ArenaView {
       if (this.game) {
         this.game.scale.setZoom(1 / dpr);
         this.game.scale.resize(Math.round(w * dpr), Math.round(h * dpr));
+        this.scene.wake();
         return;
       }
       this.game = new Phaser.Game({
@@ -79,6 +96,7 @@ export class ArenaView {
   play(): void {
     if (this.clock.atEnd) this.rewind();
     this.clock.playing = true;
+    this.scene.wake();
   }
 
   pause(): void {
@@ -144,5 +162,6 @@ export class ArenaView {
   destroy(): void {
     this.sized.disconnect();
     this.game?.destroy(true);
+    this.game?.loop.wake(); // Phaser destroys the game on its next step: a sleeping loop never takes one
   }
 }
