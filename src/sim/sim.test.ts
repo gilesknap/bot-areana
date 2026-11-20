@@ -450,6 +450,27 @@ describe('weapons, damage and energy', () => {
       expect(h.m.tick).toBe(60 * 30);
       expect(h.m.result()).toMatchObject({ won: true, seconds: 60 });
     });
+
+    it('killing only one of two enemies still needs the full time', () => {
+      const two = makeLevel({ ...level, enemies: [enemy('d', 'static', 600, 300), enemy('e', 'static', 200, 1000)] });
+      const h = new Harness(two, shooter);
+      h.bot('d').hp = 1;
+      h.call('blaster', 'fire');
+      h.finish();
+      expect(h.events('destroyed').map((e) => e.botId)).toEqual(['d']);
+      expect(h.m.tick).toBe(60 * TICK_RATE);
+      expect(h.m.result()).toMatchObject({ won: true, seconds: 60 });
+    });
+
+    it('a dormant (delayed) enemy killed before it wakes completes it early', () => {
+      const dormant = makeLevel({ ...level, enemies: [enemy('c', 'chase', 600, 300, { params: { delay: 1000 } })] });
+      const h = new Harness(dormant, shooter);
+      h.bot('c').hp = 1;
+      h.call('blaster', 'fire');
+      h.finish();
+      expect(h.m.tick).toBeLessThan(2 * TICK_RATE);
+      expect(h.m.result()).toMatchObject({ won: true, reason: 'objectives_complete' });
+    });
   });
 
   it('armour halves damage on its side only; a shield removes 80% from any side', () => {
