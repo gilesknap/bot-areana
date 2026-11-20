@@ -86,7 +86,7 @@ program it in real Python, send it into arenas. Hosted statically on GitHub Page
 | 6 | Bump & Run | booleans, def | collect 3 data cores in a maze | Bump sensor |
 | 7 | First Contact | iterating scan(), attributes | defeat a patrol bot | Radar, Armour |
 | 8 | Rough Ground | variables & state | cross lava/rough ground, time limit | Tracks |
-| 9 | Overcharge | resource management | survive 60 s vs 2 chasers | Shield, Battery+ |
+| 9 | Overcharge | resource management | survive 60 s vs 2 chasers (or destroy both) | Shield, Battery+ |
 | 10 | The Gauntlet | own functions/classes | defeat 3 mixed enemies | Ram spike, Hover |
 
 ## Persistence

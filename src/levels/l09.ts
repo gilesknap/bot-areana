@@ -10,9 +10,10 @@ export const l09: LevelDef = {
   concept: 'resources',
   label: 'E-09',
   brief:
-    "Two chasers, one minute, no exits. Your new shield soaks up most of a hit, but it drinks " +
-    "8 energy a second, and so does your patience. Raise it when they're close, drop it when " +
-    "they're not, and keep an eye on the battery. A flat bot is a target.",
+    "Two chasers, one minute, no exits: outlast them or take them both out. Your new shield " +
+    "soaks up most of a hit, but it drinks 8 energy a second, and so does your patience. Raise " +
+    "it when they're close, drop it when they're not, and keep an eye on the battery. A flat " +
+    "bot is a target.",
   lesson: {
     title: 'managing resources',
     snippet: 'if bot.battery.level() > 30:\n    bot.shield.on()\nelse:\n    bot.shield.off()',
@@ -36,7 +37,7 @@ export const l09: LevelDef = {
     '....................',
   ],
   spawn: { x: 400, y: 400, heading: 0 },
-  objectives: [{ type: 'survive', id: 'survive', label: 'Survive for 60 seconds', seconds: 60 }],
+  objectives: [{ type: 'survive', id: 'survive', label: 'Survive for 60 seconds, or destroy both chasers', seconds: 60 }],
   timeLimit: 90,
   enemies: [
     { id: 'chaser1', behaviour: 'chase', design: ENEMY.gunner, spawn: { x: 60, y: 60, heading: 135 }, params: chaser },
@@ -68,7 +69,7 @@ while True:
 `,
   hints: [
     'Shield on all the time runs the battery flat in under a minute. Only raise it when a bot is within about 450 cm.',
-    'Fighting back helps: a destroyed chaser does no damage. Turn to the nearest "bot" from scan() and fire when ready.',
+    'Fighting back helps: a destroyed chaser does no damage, and destroying both wins straight away. Turn to the nearest "bot" from scan() and fire when ready.',
     'Each loop: scan, decide shield on/off from distance and battery.level(), turn, fire, then bot.wait(0.2).',
   ],
   solution: {

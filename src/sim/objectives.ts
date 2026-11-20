@@ -95,7 +95,11 @@ export class Objectives {
           o.progress = (d.enemies ?? this.enemyIds).filter((id) => w.destroyed.has(id)).length;
           break;
         case 'survive':
-          o.progress = Math.min(d.seconds, Math.floor(w.tick / TICK_RATE));
+          // Nothing left to survive once every enemy is destroyed: done early.
+          o.progress =
+            this.enemyIds.length > 0 && this.enemyIds.every((id) => w.destroyed.has(id))
+              ? d.seconds
+              : Math.min(d.seconds, Math.floor(w.tick / TICK_RATE));
           break;
       }
       o.done = o.progress >= o.total;

@@ -192,7 +192,8 @@ One run at a time per worker; each run gets a fresh Python namespace. Messages f
   event per objective so the HUD can initialise. `Frame.bots` lists every bot every tick.
 - Ends the match when: all objectives done (`objectives_complete`, won); player hp 0 or fell
   into a pit (`bot_destroyed`); clock passes `timeLimit` or `MAX_MATCH_SECONDS` (`time_up`).
-  A `survive` objective completes when its time is reached.
+  A `survive` objective completes when its time is reached, or as soon as every enemy in the
+  level is destroyed (nothing left to survive).
 - `result()` fills `MatchResult`: stars = 0 if lost, else 1 + each `LevelDef.stars` criterion met
   (`time` ≤ seconds, `damage` taken ≤ max, `lines` ≤ max using `MatchOptions.scriptLines`,
   `energy` left ≥ min).
