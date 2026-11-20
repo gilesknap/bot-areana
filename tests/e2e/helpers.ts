@@ -1,12 +1,11 @@
 import { mkdirSync } from 'node:fs';
-import { expect, type ConsoleMessage, type Page } from '@playwright/test';
+import { expect, test, type ConsoleMessage, type Page } from '@playwright/test';
 
-/** Screenshots of each step land here (uploaded by CI with the rest of test-results). */
-const SHOTS = 'test-results/screens';
-
+/** Screenshots of each step land here, per browser (uploaded by CI with the rest of test-results). */
 export async function shot(page: Page, name: string): Promise<void> {
-  mkdirSync(SHOTS, { recursive: true });
-  await page.screenshot({ path: `${SHOTS}/${name}.png` });
+  const dir = `test-results/screens/${test.info().project.name}`;
+  mkdirSync(dir, { recursive: true });
+  await page.screenshot({ path: `${dir}/${name}.png` });
 }
 
 /**
