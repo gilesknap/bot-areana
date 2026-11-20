@@ -42,10 +42,11 @@ export const l01: LevelDef = {
 # Your bot only does what your Python code tells it to.
 #
 # This line CALLS a function: bot.drive.forward(...)
-# The number in the brackets is an argument - how many cm to drive.
+# The number in the brackets is an argument:
+# how many cm to drive.
 #
-# The flag is 400 cm ahead, but this only goes part of the way.
-# Change the number, then press Run.
+# The flag is 400 cm ahead, but this only goes
+# part of the way. Change the number, then press Run.
 bot.drive.forward(100)
 `,
   hints: [

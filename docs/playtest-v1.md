@@ -50,3 +50,12 @@ Level 10 stays the hardest.
   hint 3 shows how to use them. Requiring them would need a new kind of objective.
 - **Level 3's line star:** the filled-in starter is 18 lines against a 14-line star, so 3★ means
   tidying the starter's prints away. It's a reasonable stretch goal, so it stays.
+
+## In the real UI (level 1, CI screenshots)
+
+The brief, the "New in Python" box, the starter, the failed first run ("Your script finished
+before the objectives were complete"), the three hints and the 3★ victory all read clearly. At
+1440 px the editor fits about 60 characters, and the editor doesn't wrap lines. Level 1's
+starter comments were cut off mid-word, so they are reflowed to fit. Every other level's starter
+also has comment lines longer than 60 characters. Line wrapping in the editor (UI, not level
+data) would fix those, so they are left for that.
