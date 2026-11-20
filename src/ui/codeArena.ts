@@ -5,7 +5,7 @@
  * locked from the moment a run starts until Reset.
  */
 import type { ScriptError } from '../shared/errors';
-import type { Frame, SimEvent, WorldInit } from '../shared/frames';
+import type { Frame, LineRecord, SimEvent, WorldInit } from '../shared/frames';
 import type { MatchResult } from '../shared/result';
 import type { PlaybackSpeed } from '../shared/save';
 import { formatTicks } from '../shared/script';
@@ -62,7 +62,7 @@ export function codeArenaScreen(state: AppState, ctx: LevelContext): Screen {
   const status = h('div.arena-status', { hidden: true });
   const playBtn = h('button.run-btn.primary', { type: 'button', 'aria-label': 'Run' });
   const resetBtn = h('button.run-btn', { type: 'button', 'aria-label': 'Reset' }, icon('reset'));
-  const stepBtn = h('button.run-btn', { type: 'button', 'aria-label': 'Step one tick' }, icon('step'));
+  const stepBtn = h('button.run-btn', { type: 'button', 'aria-label': 'Step one line' }, icon('step'));
   const speedBtns = SPEEDS.map((s) => h('button', { type: 'button', 'aria-pressed': 'false' }, s.label));
   const readout = h('div.readout');
   const pyStatus = h('div.py-status', { role: 'status' });
@@ -155,10 +155,14 @@ export function codeArenaScreen(state: AppState, ctx: LevelContext): Screen {
 
   // ---- Run state ----
   let phase: Phase = 'idle';
-  let playing = false;
   let run: { cancel(): void } | null = null;
   let pendingError: ScriptError | null = null;
   let result: MatchResult | null = null;
+  /** Step started the run: step onto line 1 as soon as the first lines arrive. */
+  let stepOnLines = false;
+  /** Until the match starts (Python may still be booting), the buttons set what happens then. */
+  let started = false;
+  let playOnStart = false;
 
   function setPhase(p: Phase) {
     phase = p;
@@ -166,8 +170,8 @@ export function codeArenaScreen(state: AppState, ctx: LevelContext): Screen {
     el.classList.toggle('is-running', p !== 'idle');
   }
 
+  /** The main button's look: Pause while playback moves (see arena.onMoving), else Run or Play. */
   function setPlaying(p: boolean) {
-    playing = p;
     playBtn.replaceChildren(icon(p ? 'pause' : 'play'));
     playBtn.setAttribute('aria-label', p ? 'Pause' : phase === 'idle' ? 'Run' : 'Play');
   }
@@ -218,6 +222,10 @@ export function codeArenaScreen(state: AppState, ctx: LevelContext): Screen {
     setScript(state, ctx, script);
     state.flush();
     reset(false);
+    stepOnLines = startPaused;
+    playOnStart = !startPaused;
+    started = false;
+    delete arenaHost.dataset.finished; // set again when this run's frames are all in
     consoleOut.replaceChildren();
     setPhase('running');
     setPlaying(!startPaused);
@@ -234,7 +242,6 @@ export function codeArenaScreen(state: AppState, ctx: LevelContext): Screen {
       return;
     }
     if (phase !== 'running') return; // reset while loading
-    let started = false;
     const runSeed = nextSeed();
     seedUsed = true;
     run = runner.run(
@@ -245,10 +252,16 @@ export function codeArenaScreen(state: AppState, ctx: LevelContext): Screen {
           status.hidden = true;
           void arena.load(level, w);
           hud.load(level, w);
-          if (playing) arena.play();
+          if (playOnStart) arena.play();
           else arena.pause();
         },
-        onFrames: (frames: Frame[]) => arena.push(frames),
+        onFrames: (frames: Frame[], lines: LineRecord[]) => {
+          arena.push(frames, lines);
+          if (stepOnLines && lines.length) {
+            stepOnLines = false;
+            if (!arena.moving) arena.step();
+          }
+        },
         onFatal: (message: string) => {
           status.textContent = `Python failed to load: ${message}`;
           log(`Python failed to load: ${message}. Check your connection and reload.`, 'err');
@@ -291,9 +304,11 @@ export function codeArenaScreen(state: AppState, ctx: LevelContext): Screen {
     result = null;
     pendingError = null;
     justCleared = false;
+    stepOnLines = false;
     overlay.hidden = true;
     status.hidden = true;
     editor.showError(null);
+    editor.showLine(null);
     arena.pause();
     setPhase('idle');
     setPlaying(false); // after setPhase: the button's label depends on the phase
@@ -307,13 +322,25 @@ export function codeArenaScreen(state: AppState, ctx: LevelContext): Screen {
   arena.onTick((tick: number, frame: Frame) => {
     setReadout(tick);
     hud.tick(tick, frame);
-    if (pendingError && tick >= pendingError.tick) showError(pendingError);
   });
   arena.onEvent((e: SimEvent, tick: number) => {
     hud.event(e);
     if (e.type === 'print') log(e.text, e.stream === 'stderr' ? 'err' : e.stream === 'log' ? 'log' : 'out', tick);
     const s = sfxForEvent(e);
     if (s) sfx(s);
+  });
+  // A step playing up to its line shows Pause (pressing it stops there), and Play once it arrives.
+  arena.onMoving((moving: boolean) => {
+    if (phase !== 'idle') setPlaying(moving);
+  });
+  // The current line follows steps and pauses; while playing it stays put (at 4x it would flicker
+  // and pin the editor's scroll).
+  const showLine = () => editor.showLine(phase === 'idle' ? null : arena.line);
+  arena.onMoving((moving: boolean) => {
+    if (!moving) showLine();
+  });
+  arena.onLine(() => {
+    if (!arena.moving) showLine();
   });
   arena.onEnd(() => {
     if (pendingError) showError(pendingError);
@@ -374,15 +401,24 @@ export function codeArenaScreen(state: AppState, ctx: LevelContext): Screen {
       // Play again after the end: a fresh run of the same script.
       return void startRun();
     }
-    setPlaying(!playing);
-    if (playing) arena.play();
-    else arena.pause();
+    stepOnLines = false;
+    if (!started) {
+      playOnStart = !playOnStart;
+      return setPlaying(playOnStart);
+    }
+    if (arena.moving) arena.pause();
+    else arena.play();
+    setPlaying(arena.moving); // now, in case the scene is still building and sees no change
   });
   stepBtn.addEventListener('click', () => {
     if (phase === 'idle') return void startRun(true);
-    setPlaying(false);
-    arena.pause();
-    arena.step();
+    if (!started) {
+      playOnStart = false;
+      stepOnLines = true;
+      return setPlaying(false);
+    }
+    stepOnLines = false;
+    arena.step(); // not pause() first: that would cancel a step still playing up to its line
   });
   resetBtn.addEventListener('click', () => reset());
   speedBtns.forEach((b, i) => b.addEventListener('click', () => setSpeed(SPEEDS[i]!.value)));
@@ -427,7 +463,7 @@ export function codeArenaScreen(state: AppState, ctx: LevelContext): Screen {
     { target: '.editor-wrap', title: 'Your script', text: 'This is main.py: real Python that drives your bot. It is saved as you type.' },
     { target: '.code-toolbar .api-btn', title: 'API reference', text: 'Every command your fitted parts give you, with examples. Click an example to put it in your script.' },
     { target: '.run-btn.primary', title: 'Run', text: 'Sends your bot into the arena. Python boots in the background, so you can press it straight away.' },
-    { target: '.runbar .speeds', title: 'Watch it back', text: 'Pause, step one tick at a time, or change speed. Reset (⟲) goes back to editing.' },
+    { target: '.runbar .speeds', title: 'Watch it back', text: 'Pause, step through your script one line at a time (the line is lit up in the editor), or change speed. Reset (⟲) goes back to editing.' },
     { target: '.console', title: 'Console', text: 'Your print() output and friendly error messages appear here.' },
   ]);
   runner.ready.then(

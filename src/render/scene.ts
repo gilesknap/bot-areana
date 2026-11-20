@@ -49,6 +49,8 @@ export interface SceneListeners {
   tick: Set<(tick: number, frame: Frame) => void>;
   event: Set<(event: SimEvent, tick: number) => void>;
   end: Set<() => void>;
+  line: Set<(line: number | null) => void>;
+  moving: Set<(moving: boolean) => void>;
 }
 
 interface Fx {
@@ -142,7 +144,7 @@ function loadFonts(): Promise<unknown> {
 
 export class ArenaScene extends Phaser.Scene {
   readonly clock = new PlaybackClock();
-  listeners: SceneListeners = { tick: new Set(), event: new Set(), end: new Set() };
+  listeners: SceneListeners = { tick: new Set(), event: new Set(), end: new Set(), line: new Set(), moving: new Set() };
   onBoot?: () => void;
   /**
    * Render only while playing (and once after each change) instead of animating the idle hall.
@@ -154,6 +156,8 @@ export class ArenaScene extends Phaser.Scene {
   private ready = false;
   private buildToken = 0;
   private stepRequested = false;
+  private shownLine: number | null = null;
+  private wasMoving = false;
   private realTime = 0;
 
   private bots = new Map<string, BotView>();
@@ -253,16 +257,28 @@ export class ArenaScene extends Phaser.Scene {
     let upd;
     if (this.stepRequested) {
       this.stepRequested = false;
+      const before = this.clock.time;
       upd = this.clock.step();
-      fxDt = 1000 / TICK_RATE;
+      // Effects move by the game time stepped (0 for a line at the same tick), at most one tick: a
+      // step finished at once doesn't run seconds of particles in one frame.
+      fxDt = (Math.min(this.clock.time - before, 1) * 1000) / TICK_RATE;
     } else {
-      const playing = this.clock.playing;
+      // Effects move by the playback time that passed (a step stops at its tick mid-frame).
+      const before = this.clock.time;
       upd = this.clock.advance(delta);
-      fxDt = playing ? delta * this.clock.speed : 0;
+      fxDt = (Math.max(0, this.clock.time - before) * 1000) / TICK_RATE;
     }
     for (const frame of upd.reached) this.handleFrame(frame);
     const last = upd.reached[upd.reached.length - 1];
     if (last) for (const cb of this.listeners.tick) cb(last.tick, last);
+    if (this.clock.line !== this.shownLine) {
+      this.shownLine = this.clock.line;
+      for (const cb of this.listeners.line) cb(this.shownLine);
+    }
+    if (this.clock.moving !== this.wasMoving) {
+      this.wasMoving = this.clock.moving;
+      for (const cb of this.listeners.moving) cb(this.wasMoving);
+    }
 
     // Particles and effects run on playback time, so they freeze on pause and speed up at 4x.
     const scale = delta > 0 ? fxDt / delta : 0;
@@ -275,7 +291,7 @@ export class ArenaScene extends Phaser.Scene {
     this.renderState(this.currentState(), fxDt);
     if (upd.ended) for (const cb of this.listeners.end) cb();
     // This frame is still drawn; the loop then stops until wake().
-    if (this.lowPower && !this.clock.playing && !this.stepRequested) this.game.loop.sleep();
+    if (this.lowPower && !this.clock.moving && !this.stepRequested) this.game.loop.sleep();
   }
 
   private currentState(): InterpolatedState {
@@ -774,7 +790,7 @@ export class ArenaScene extends Phaser.Scene {
     em.sparks.explode(Math.round(18 * k), x, y);
     em.smoke.explode(Math.round(9 * k), x, y);
     em.debris.explode(Math.round(10 * k), x, y);
-    if (this.clock.playing) this.cameras.main.shake(220, 0.004 * k);
+    if (this.clock.moving) this.cameras.main.shake(220, 0.004 * k);
   }
 
   private wreck(x: number, y: number, view: BotView | undefined): void {

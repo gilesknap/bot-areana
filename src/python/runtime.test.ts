@@ -3,6 +3,9 @@ import type { BotDesign } from '../shared/parts';
 import { runHeadless, type HeadlessOptions } from './headless';
 import { testDesign, testLevel, testSim } from './testSim';
 
+// bootstrap.py's cap on lines recorded between two bot calls.
+const MAX_LINES_PER_CALL = 100;
+
 const run = (script: string, design: BotDesign = testDesign, options: HeadlessOptions = {}) =>
   runHeadless({ level: testLevel(), design, script, seed: 7 }, { createMatch: testSim.createMatch, ...options });
 
@@ -80,6 +83,47 @@ describe('python runtime (real Pyodide, test sim)', () => {
     const a = await run('import random\nprint(random.random())');
     const b = await run('import random\nprint(random.random())');
     expect(a.prints).toEqual(b.prints);
+  });
+
+  it('records each line of main.py as it starts, with its tick', async () => {
+    const r = await run('x = 3\nbot.wait(1)\ndef f():\n    return x + 1\ny = f()\nbot.wait(1)\nprint(y)');
+    expect(r.error).toBeUndefined();
+    expect(r.lines.map((l) => [l.tick, l.line])).toEqual([[0, 1], [0, 2], [30, 3], [30, 5], [30, 4], [30, 6], [60, 7]]);
+  });
+
+  it('keeps the first lines of a loop that never calls the bot, then the call', async () => {
+    const r = await run('for i in range(1000):\n    x = i\nbot.wait(1)\nprint(x)');
+    const atStart = r.lines.filter((l) => l.tick === 0);
+    expect(atStart).toHaveLength(MAX_LINES_PER_CALL);
+    expect(atStart.at(-1)!.line).toBe(3);
+    expect(r.lines.at(-1)).toEqual({ tick: 30, line: 4 });
+  });
+
+  it('hands over the line making the call, even past the cap', async () => {
+    const r = await run('for i in range(300):\n    if i == 299:\n        bot.wait(1)\n    y = i');
+    const atStart = r.lines.filter((l) => l.tick === 0);
+    expect(atStart).toHaveLength(MAX_LINES_PER_CALL);
+    expect(atStart.at(-1)!.line).toBe(3);
+  });
+
+  it('records every line again after the call that follows a capped loop', async () => {
+    const r = await run('for i in range(300):\n    x = i\nbot.wait(1)\nfor i in range(3):\n    y = i\nbot.wait(1)');
+    const after = r.lines.filter((l) => l.tick === 30).map((l) => l.line);
+    expect(after.filter((l) => l === 5)).toHaveLength(3);
+    expect(after.at(-1)).toBe(6);
+  });
+
+  it('ends on the line that raised, even past the cap', async () => {
+    const r = await run('for i in range(200):\n    a = i\n    b = 10 / (150 - i)');
+    expect(r.error?.line).toBe(3);
+    expect(r.lines).toHaveLength(MAX_LINES_PER_CALL);
+    expect(r.lines.at(-1)).toEqual({ tick: 0, line: 3 });
+  });
+
+  it('records the line that raised', async () => {
+    const r = await run('bot.wait(0.1)\nprint(1 / 0)');
+    expect(r.error?.line).toBe(2);
+    expect(r.lines.at(-1)).toEqual({ tick: 3, line: 2 });
   });
 
   it('caps runaway printing within one tick', async () => {

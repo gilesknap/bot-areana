@@ -6,14 +6,14 @@
  * boots while a run is in progress, so Retry after a stopped run doesn't wait for Python again.
  */
 import { WATCHDOG_MESSAGE, WATCHDOG_TIP, type ScriptError } from '../shared/errors';
-import type { Frame, WorldInit } from '../shared/frames';
+import type { Frame, LineRecord, WorldInit } from '../shared/frames';
 import { TICK_RATE } from '../shared/geometry';
 import type { MainToWorker, RunRequest, WorkerToMain } from '../shared/protocol';
 import type { EndReason, MatchResult, ObjectiveProgress } from '../shared/result';
 
 export interface RunHandlers {
   onStarted?(world: WorldInit): void;
-  onFrames?(frames: Frame[]): void;
+  onFrames?(frames: Frame[], lines: LineRecord[]): void;
   onError?(error: ScriptError): void;
   onDone?(result: MatchResult): void;
   /** Python could not be loaded at all (e.g. offline). */
@@ -165,7 +165,7 @@ export class PythonRunner {
           }
         }
         run.lastFrame = msg.frames.at(-1) ?? run.lastFrame;
-        run.handlers.onFrames?.(msg.frames);
+        run.handlers.onFrames?.(msg.frames, msg.lines);
         break;
       case 'error':
         run.errored = true;

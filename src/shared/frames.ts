@@ -71,6 +71,15 @@ export type SimEvent =
   | { type: 'print'; text: string; stream: 'stdout' | 'stderr' | 'log' }
   | { type: 'low_energy'; botId: string };
 
+/**
+ * A line of the player's main.py starting to run at `tick` (lines that take no game time share the
+ * tick of the next bot call). Sent beside the frames; step mode walks through them.
+ */
+export interface LineRecord {
+  tick: number;
+  line: number;
+}
+
 export interface Frame {
   tick: number;
   bots: BotFrame[];

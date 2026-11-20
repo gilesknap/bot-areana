@@ -4,7 +4,7 @@
  */
 import type { PyodideAPI } from 'pyodide';
 import type { ScriptError } from '../shared/errors';
-import type { Frame, WorldInit } from '../shared/frames';
+import type { Frame, LineRecord, WorldInit } from '../shared/frames';
 import type { LevelDef } from '../shared/level';
 import type { BotDesign } from '../shared/parts';
 import type { CreateMatch, RunRequest } from '../shared/protocol';
@@ -14,6 +14,8 @@ import { executeRun, prepareRuntime } from './runtime';
 export interface HeadlessRun {
   world: WorldInit;
   frames: Frame[];
+  /** Lines of the script as they started (see LineRecord). */
+  lines: LineRecord[];
   result: MatchResult;
   error?: ScriptError;
   /** Console output in order: print() text, bot.log() text. */
@@ -43,12 +45,16 @@ export async function runHeadless(req: RunRequest, options: HeadlessOptions = {}
   const py = await headlessPyodide();
   const createMatch = options.createMatch ?? (await import('../sim')).createMatch;
   const frames: Frame[] = [];
+  const lines: LineRecord[] = [];
   const outcome = executeRun(py, createMatch, req, {
-    onFrames: (batch) => frames.push(...batch),
+    onFrames: (batch, newLines) => {
+      frames.push(...batch);
+      lines.push(...newLines);
+    },
     watchdogMs: options.watchdogMs ?? 3000,
   });
   const prints = frames.flatMap((f) => f.events.flatMap((e) => (e.type === 'print' ? [e.text] : [])));
-  return { ...outcome, frames, prints };
+  return { ...outcome, frames, lines, prints };
 }
 
 /** Convenience wrapper for level tests. */

@@ -9,7 +9,7 @@
 import type { PyodideAPI } from 'pyodide';
 import type { PyProxy } from 'pyodide/ffi';
 import { BotApiError, MatchOver, WATCHDOG_MESSAGE, WATCHDOG_TIP, type ScriptError } from '../shared/errors';
-import type { Frame, WorldInit } from '../shared/frames';
+import type { Frame, LineRecord, WorldInit } from '../shared/frames';
 import type { CreateMatch, PyValue, RunRequest, SimMatch } from '../shared/protocol';
 import type { MatchResult } from '../shared/result';
 import { countScriptLines } from '../shared/script';
@@ -22,7 +22,8 @@ export const MAX_PRINTS_PER_TICK = 200;
 
 export interface RunHooks {
   onStarted?(world: WorldInit): void;
-  onFrames(frames: Frame[]): void;
+  /** New frames, and the script lines that started since the last batch (see LineRecord). */
+  onFrames(frames: Frame[], lines: LineRecord[]): void;
   onError?(error: ScriptError): void;
   /** Wall-time between frame flushes while the script runs (default 50 ms). */
   flushMs?: number;
@@ -41,11 +42,12 @@ export interface RunOutcome {
 
 type RunPlayer = (bridge: (op: string, payload: string) => string, source: string, script: string, seed: number, watchdogSeconds: number) => string;
 
-type PlayerStatus =
+type PlayerStatus = { lines: number[] } & (
   | { status: 'ok' | 'over' }
   | { status: 'watchdog'; line: number | null }
   | { status: 'internal'; message: string }
-  | { status: 'error'; type: string; message: string; line: number | null; game: boolean };
+  | { status: 'error'; type: string; message: string; line: number | null; game: boolean }
+);
 
 const prepared = new WeakMap<PyodideAPI, PyProxy>();
 
@@ -76,20 +78,26 @@ export function executeRun(py: PyodideAPI, createMatch: CreateMatch, req: RunReq
 
   const flushMs = hooks.flushMs ?? 50;
   let lastFlush = performance.now();
+  let lines: LineRecord[] = [];
+  const addLines = (numbers: number[]) => {
+    for (const line of numbers) lines.push({ tick: match.tick, line });
+  };
   const flush = () => {
     lastFlush = performance.now();
     const frames = match.takeFrames();
-    if (frames.length) hooks.onFrames(frames);
+    if (frames.length || lines.length) hooks.onFrames(frames, lines);
+    lines = [];
   };
   // Send the start frame now: if the script then loops without calling the bot and the worker
   // is killed, playback still has a frame to show the error and result at.
   flush();
 
-  const bridge = makeBridge(match, () => {
+  const bridge = makeBridge(match, addLines, () => {
     if (performance.now() - lastFlush >= flushMs) flush();
   });
   const raw = runPlayer(bridge, botSource(req.design), req.script, req.seed, (hooks.watchdogMs ?? 0) / 1000);
   const status = JSON.parse(raw) as PlayerStatus;
+  addLines(status.lines);
 
   let error: ScriptError | undefined;
   if (!match.finished) {
@@ -123,7 +131,7 @@ export function executeRun(py: PyodideAPI, createMatch: CreateMatch, req: RunReq
 }
 
 /** The single JS function Python may call: `bridge(op, json) -> json`. Never throws into Python. */
-function makeBridge(match: SimMatch, afterCall: () => void) {
+function makeBridge(match: SimMatch, addLines: (lines: number[]) => void, afterCall: () => void) {
   let printTick = -1;
   let printsThisTick = 0;
 
@@ -137,8 +145,9 @@ function makeBridge(match: SimMatch, afterCall: () => void) {
     else if (printsThisTick === MAX_PRINTS_PER_TICK + 1) match.print('... (too much output - some lines hidden)', 'stderr');
   };
 
-  const call = (attr: string, method: string, args: PyValue[]): string => {
+  const call = (attr: string, method: string, args: PyValue[], lines: number[]): string => {
     if (match.finished) return '{"over":true}';
+    addLines(lines);
     try {
       const value = match.call(attr, method, args);
       return JSON.stringify({ value: value ?? null });
@@ -154,7 +163,7 @@ function makeBridge(match: SimMatch, afterCall: () => void) {
   return (op: string, payload: string): string => {
     try {
       const args = JSON.parse(payload) as PyValue[];
-      if (op === 'call') return call(args[0] as string, args[1] as string, args[2] as PyValue[]);
+      if (op === 'call') return call(args[0] as string, args[1] as string, args[2] as PyValue[], args[3] as number[]);
       if (op === 'print') {
         print(args[0] as string, args[1] as 'stdout' | 'stderr' | 'log');
         return '{}';

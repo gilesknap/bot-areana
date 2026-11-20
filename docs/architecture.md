@@ -166,12 +166,19 @@ Game exceptions (`BOT_ERRORS` in `src/shared/errors.ts`): `BlasterNotReady`, `Ou
    only call-free loops trip it. Per-tick print events are capped (~200) to bound memory.
 8. Pause / step / speed / reset are playback controls on the already-computed frames. No editing
    mid-run; reset discards the run.
+9. **Line records**: `bootstrap.py` records each line of `main.py` as it starts (`sys.monitoring`
+   LINE events on main.py's code objects only) and hands them over with the next bot call, or at
+   the end of the script; the runtime stamps them with the current tick (`LineRecord`) and sends
+   them with the frames. At most 100 are kept between two calls (the first ones; past the cap
+   the last slot is set to the line making the call, or the line that raised), so a long loop
+   that never calls the bot neither grows memory nor stays slowed down. Step mode walks these
+   lines and the editor highlights the current one.
 
 ### Worker protocol (`src/shared/protocol.ts`)
 
 `MainToWorker`: `{ type:'run', runId, level, design, script, seed }`.
 `WorkerToMain`: `ready{pyodideVersion}`, `fatal{message}`, `started{runId, world}`,
-`frames{runId, frames}`, `error{runId, error}`, `done{runId, result}`.
+`frames{runId, frames, lines}`, `error{runId, error}`, `done{runId, result}`.
 One run at a time per worker; each run gets a fresh Python namespace. Messages for a stale
 `runId` are ignored by the client.
 
@@ -226,12 +233,12 @@ One run at a time per worker; each run gets a fresh Python namespace. Messages f
 - `worker.ts`: module worker; `import(PYODIDE_CDN + 'pyodide.mjs')`, `loadPyodide({ indexURL: PYODIDE_CDN })`,
   posts `ready`, handles `run`.
 - `client.ts` (main thread): `class PythonRunner { ready: Promise<void>; run(req, handlers): { cancel() }; dispose() }`
-  with the watchdog; handlers `onStarted(world)`, `onFrames(frames)`, `onError(err)`, `onDone(result)`,
+  with the watchdog; handlers `onStarted(world)`, `onFrames(frames, lines)`, `onError(err)`, `onDone(result)`,
   and optional `onFatal(message)` (Python could not load, or the worker failed mid-run).
   Stopping a script (cancel, watchdog, crash) means terminating its worker, so the runner keeps
   one spare worker booting in the background, started when a run is posted or a worker is
   killed; the spare takes over at once and Retry doesn't wait for Python again.
-- `headless.ts` (Node, tests only): `runHeadless(req: RunRequest): Promise<{ world, frames, result, error?, prints: string[] }>`
+- `headless.ts` (Node, tests only): `runHeadless(req: RunRequest): Promise<{ world, frames, lines, result, error?, prints: string[] }>`
   using the `pyodide` npm package (instance cached across calls) and the same `runtime.ts`.
   An optional second argument `{ createMatch?, watchdogMs? }` swaps the sim (tests) or the
   in-Python watchdog. `runMatchHeadless(level, design, script, seed?)` is the shortcut the
@@ -239,13 +246,24 @@ One run at a time per worker; each run gets a fresh Python namespace. Messages f
 
 ### Render (`src/render/`)
 
-- `ArenaView` (Phaser): `constructor(parent)`, `load(level, world)`, `push(frames)`,
+- `ArenaView` (Phaser): `constructor(parent)`, `load(level, world)`, `push(frames, lines?)`,
   `play()`, `pause()`, `step()`, `setSpeed(PlaybackSpeed)`, `reset()`, `destroy()`, and listeners
   `onTick(cb(tick, frame))`, `onEvent(cb(event, tick))` (fired as playback reaches each event),
-  `onEnd(cb)` (playback reached the last frame of a finished run). Playback interpolates
-  between ticks for smooth motion. Also `finish()` (no more frames are coming for this run, so
-  `onEnd` may fire) and `rewind()` (replay from tick 0 keeping the frames), plus `playing`,
-  `speed`, `tick` and `bufferedTick` getters.
+  `onLine(cb(line | null))` (the script line shown changed), `onMoving(cb(moving))` (playback
+  started or stopped moving: playing, or a step playing up to its line; the UI's Play/Pause
+  button follows it), `onEnd(cb)` (playback reached the last frame of a finished run and every
+  line up to it, so the result never covers lines still to step through). `step()` moves to the
+  next line record: at once if it starts at the shown tick (lines that take no game time share a
+  tick), else by playing at the current speed until that tick and pausing there. After the last
+  line of a finished run the end of the run is the last step: it plays to the last frame. A second
+  `step()` meanwhile finishes it at once; `pause()` stops it where it is, `play()` carries on
+  playing. While frames are still streaming and no next line has arrived (or with no lines at
+  all, as in `render/demo.ts`) it steps one tick. Playback interpolates between ticks for smooth
+  motion. Also `finish()` (no more frames are coming for this run, so `onEnd` may fire) and
+  `rewind()` (replay from tick 0 keeping the frames), plus `playing`, `moving`, `line`, `speed`,
+  `tick` and `bufferedTick` getters. `PlaybackClock.ended` is true once the end has been signalled
+  (`play()` then replays from the start). The editor's current line follows steps and pauses, not
+  normal play. A script error shows when playback ends (an error ends the match).
 - Look must match `Arena.dc.html` "test hall": steel floor plates with rivets, painted hazard
   border and centre ring, level label (`LevelDef.label`) as a faint giant stencil, START hex pad,
   concrete walls with hazard-stripe ends and drop shadows, glowing lava, water, pits, rough

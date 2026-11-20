@@ -9,7 +9,7 @@
  * Pause / step / speed / rewind only change playback of frames already received.
  */
 import Phaser from 'phaser';
-import type { Frame, SimEvent, WorldInit } from '../shared/frames';
+import type { Frame, LineRecord, SimEvent, WorldInit } from '../shared/frames';
 import type { LevelDef } from '../shared/level';
 import { PALETTE } from '../shared/palette';
 import type { PlaybackSpeed } from '../shared/save';
@@ -55,8 +55,11 @@ export class ArenaView {
       if (!w || !h) return;
       const dpr = Math.min(3, window.devicePixelRatio || 1);
       if (this.game) {
-        this.game.scale.setZoom(1 / dpr);
+        // Zoom after resizing: in Scale.NONE, resize() leaves the canvas's CSS size alone when it
+        // equals the new pixel size (zoom 1, so at devicePixelRatio 1 the canvas kept its old CSS
+        // size and was stretched or clipped); setZoom() always sets it from the new size.
         this.game.scale.resize(Math.round(w * dpr), Math.round(h * dpr));
+        this.game.scale.setZoom(1 / dpr);
         this.scene.wake();
         return;
       }
@@ -83,6 +86,7 @@ export class ArenaView {
   load(level: LevelDef, world: WorldInit): Promise<void> {
     const seq = ++this.loadSeq;
     this.clock.clear();
+    delete this.parent.dataset.finished;
     return this.booted.then(async () => {
       if (seq !== this.loadSeq) return;
       await this.scene.build(level, world);
@@ -90,29 +94,34 @@ export class ArenaView {
     });
   }
 
-  /** Append frames from the running match (in tick order). */
-  push(frames: readonly Frame[]): void {
-    this.clock.push(frames);
+  /** Append frames from the running match (in tick order), and the script lines started meanwhile. */
+  push(frames: readonly Frame[], lines: readonly LineRecord[] = []): void {
+    this.clock.push(frames, lines);
   }
 
   /** The match is over and every frame has been pushed. */
   finish(): void {
     this.clock.finish();
+    this.parent.dataset.finished = ''; // e2e tests wait for the whole run
   }
 
   play(): void {
-    if (this.clock.atEnd) this.rewind();
-    this.clock.playing = true;
+    if (this.clock.ended) this.rewind();
+    this.clock.play();
     this.scene.wake();
   }
 
+  /** Stop where it is, including a step playing up to its line. */
   pause(): void {
-    this.clock.playing = false;
+    this.clock.pause();
   }
 
-  /** Pause and advance exactly one tick. */
+  /**
+   * Pause and move to the next line of the script, playing up to it at the current speed if it
+   * starts later (a second step finishes that at once). After the last line of a finished run it
+   * plays to the end; while streaming with no next line yet, one tick.
+   */
   step(): void {
-    this.clock.playing = false;
     this.scene.requestStep();
   }
 
@@ -127,12 +136,23 @@ export class ArenaView {
 
   /** Discard the run and show the level at its start (ready for the next run). */
   reset(): void {
-    this.clock.playing = false;
+    this.clock.pause();
+    delete this.parent.dataset.finished;
     this.scene.clearRun();
   }
 
   get playing(): boolean {
     return this.clock.playing;
+  }
+
+  /** Playing, or a step playing up to its line. */
+  get moving(): boolean {
+    return this.clock.moving;
+  }
+
+  /** Line of the script at the shown tick (null: none). */
+  get line(): number | null {
+    return this.clock.line;
   }
 
   get speed(): PlaybackSpeed {
@@ -158,6 +178,18 @@ export class ArenaView {
   onEvent(cb: (event: SimEvent, tick: number) => void): Unsubscribe {
     this.scene.listeners.event.add(cb);
     return () => this.scene.listeners.event.delete(cb);
+  }
+
+  /** Playback started or stopped moving (playing, or a step playing up to its line). */
+  onMoving(cb: (moving: boolean) => void): Unsubscribe {
+    this.scene.listeners.moving.add(cb);
+    return () => this.scene.listeners.moving.delete(cb);
+  }
+
+  /** The script line shown changed (null: none, e.g. after a reset or rewind). */
+  onLine(cb: (line: number | null) => void): Unsubscribe {
+    this.scene.listeners.line.add(cb);
+    return () => this.scene.listeners.line.delete(cb);
   }
 
   /** Playback reached the last frame of a finished run. */
