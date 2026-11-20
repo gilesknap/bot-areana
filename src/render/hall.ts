@@ -16,6 +16,26 @@ export const HALL_MARGIN = 24;
 
 export type Ctx = CanvasRenderingContext2D;
 
+/**
+ * Run `draw` blurred by `px` device pixels. Safari has no canvas `filter`, so there the shape is
+ * drawn off the canvas and only its shadow lands (blur sigma = shadowBlur / 2), coloured `colour`
+ * at the shape's own alpha. Assumes no rotation in the current transform.
+ */
+export function drawBlurred(ctx: Ctx, px: number, colour: string, draw: () => void): void {
+  ctx.save();
+  if (typeof (ctx as { filter?: unknown }).filter === 'string') {
+    ctx.filter = `blur(${px}px)`;
+  } else {
+    const away = ctx.canvas.width + 4 * px;
+    ctx.translate(away / ctx.getTransform().a, 0);
+    ctx.shadowOffsetX = -away;
+    ctx.shadowBlur = 2 * px;
+    ctx.shadowColor = colour;
+  }
+  draw();
+  ctx.restore();
+}
+
 export function rng(seed: number): () => number {
   let a = seed >>> 0 || 1;
   return () => {
@@ -465,8 +485,7 @@ export function paintLavaGlow(ctx: Ctx, input: HallInput, scale: number): void {
   ctx.save();
   ctx.scale(scale, scale);
   ctx.translate(HALL_MARGIN, HALL_MARGIN);
-  ctx.filter = `blur(${12 * scale}px)`;
   ctx.fillStyle = 'rgba(255,106,42,0.75)';
-  ctx.fill(terrainPath(grid, 'lava', 16));
+  drawBlurred(ctx, 12 * scale, 'rgb(255,106,42)', () => ctx.fill(terrainPath(grid, 'lava', 16)));
   ctx.restore();
 }

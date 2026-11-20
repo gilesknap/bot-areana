@@ -4,6 +4,7 @@
  */
 import type Phaser from 'phaser';
 import { PALETTE } from '../shared/palette';
+import { drawBlurred } from './hall';
 
 type Draw = (ctx: CanvasRenderingContext2D, w: number, h: number) => void;
 
@@ -115,12 +116,10 @@ export function makeFxTextures(textures: Phaser.Textures.TextureManager): void {
     ctx.fill();
   });
   make(textures, 'fx-bolt', 48, 16, (ctx, w, h) => {
-    ctx.filter = 'blur(2px)';
     ctx.fillStyle = 'rgba(255,255,255,0.8)';
     ctx.beginPath();
     ctx.ellipse(w / 2, h / 2, w / 2 - 4, h / 2 - 4, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.filter = 'none';
+    drawBlurred(ctx, 2, '#fff', () => ctx.fill());
     ctx.fillStyle = '#fff';
     ctx.beginPath();
     ctx.ellipse(w * 0.62, h / 2, w * 0.22, 2.2, 0, 0, Math.PI * 2);
@@ -150,7 +149,6 @@ export function makeFxTextures(textures: Phaser.Textures.TextureManager): void {
     const g = ctx.createLinearGradient(0, h, 0, 0);
     g.addColorStop(0, 'rgba(232,251,255,0.30)');
     g.addColorStop(1, 'rgba(232,251,255,0)');
-    ctx.filter = `blur(${3 * FX_RES}px)`;
     ctx.fillStyle = g;
     ctx.beginPath();
     ctx.moveTo(w / 2 - 12 * FX_RES, h);
@@ -158,7 +156,7 @@ export function makeFxTextures(textures: Phaser.Textures.TextureManager): void {
     ctx.lineTo(w - 4 * FX_RES, 0);
     ctx.lineTo(w / 2 + 12 * FX_RES, h);
     ctx.closePath();
-    ctx.fill();
+    drawBlurred(ctx, 3 * FX_RES, 'rgb(232,251,255)', () => ctx.fill());
   });
   make(textures, 'fx-sweep', SWEEP_R * 2, SWEEP_R * 2, (ctx, w, h) => {
     // Wedge trailing 50 degrees behind a leading edge that points along +x.
