@@ -20,12 +20,12 @@ export default defineConfig({
     { name: 'chromium', use: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 900 } } },
     {
       name: 'firefox',
-      testMatch: 'smoke.spec.ts',
+      testMatch: /smoke.*\.spec\.ts/,
       use: { ...devices['Desktop Firefox'], viewport: { width: 1440, height: 900 } },
     },
     {
       name: 'webkit',
-      testMatch: 'smoke.spec.ts',
+      testMatch: /smoke.*\.spec\.ts/,
       use: { ...devices['Desktop Safari'], viewport: { width: 1440, height: 900 } },
     },
   ],
