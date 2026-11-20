@@ -50,6 +50,7 @@ export interface SceneListeners {
   event: Set<(event: SimEvent, tick: number) => void>;
   end: Set<() => void>;
   line: Set<(line: number | null) => void>;
+  moving: Set<(moving: boolean) => void>;
 }
 
 interface Fx {
@@ -143,7 +144,7 @@ function loadFonts(): Promise<unknown> {
 
 export class ArenaScene extends Phaser.Scene {
   readonly clock = new PlaybackClock();
-  listeners: SceneListeners = { tick: new Set(), event: new Set(), end: new Set(), line: new Set() };
+  listeners: SceneListeners = { tick: new Set(), event: new Set(), end: new Set(), line: new Set(), moving: new Set() };
   onBoot?: () => void;
   /**
    * Render only while playing (and once after each change) instead of animating the idle hall.
@@ -156,6 +157,7 @@ export class ArenaScene extends Phaser.Scene {
   private buildToken = 0;
   private stepRequested = false;
   private shownLine: number | null = null;
+  private wasMoving = false;
   private realTime = 0;
 
   private bots = new Map<string, BotView>();
@@ -255,8 +257,9 @@ export class ArenaScene extends Phaser.Scene {
     let upd;
     if (this.stepRequested) {
       this.stepRequested = false;
+      const before = this.clock.time;
       upd = this.clock.step();
-      fxDt = 1000 / TICK_RATE;
+      fxDt = ((this.clock.time - before) * 1000) / TICK_RATE; // 0 for a line at the same tick
     } else {
       const moving = this.clock.moving;
       upd = this.clock.advance(delta);
@@ -268,6 +271,10 @@ export class ArenaScene extends Phaser.Scene {
     if (this.clock.line !== this.shownLine) {
       this.shownLine = this.clock.line;
       for (const cb of this.listeners.line) cb(this.shownLine);
+    }
+    if (this.clock.moving !== this.wasMoving) {
+      this.wasMoving = this.clock.moving;
+      for (const cb of this.listeners.moving) cb(this.wasMoving);
     }
 
     // Particles and effects run on playback time, so they freeze on pause and speed up at 4x.

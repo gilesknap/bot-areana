@@ -293,9 +293,9 @@ def _stop_player_code():
 # Every line of main.py as it starts, so playback can step through the script a line at a time.
 # sys.monitoring on main.py's own code objects only: the rest of Python (the bridge, the sim
 # calls) runs untraced. Between two bot calls (so within one tick: every call takes at least one)
-# it keeps the first MAX_LINES_PER_CALL lines. Past the cap, the last slot takes each further line
-# once as it turns that line's event off until the next call, so a long loop that never calls the
-# bot runs at full speed; the last slot is then the call's line, or the error's (run_player).
+# it keeps the first MAX_LINES_PER_CALL lines. Past the cap, each further line turns its own event
+# off until the next call, so a long loop that never calls the bot runs at full speed; the last
+# slot is then set to the line making the call (_take_lines), or the line that raised (run_player).
 MAX_LINES_PER_CALL = 100
 _LINE_TOOL = sys.monitoring.DEBUGGER_ID
 _lines = []
@@ -317,6 +317,11 @@ def _take_lines():
     if _muted:
         _muted = False
         sys.monitoring.restart_events()
+        frame = sys._getframe()
+        while frame is not None and frame.f_code.co_filename != 'main.py':
+            frame = frame.f_back
+        if frame is not None:
+            _lines[-1] = frame.f_lineno
     taken = _lines[:]
     _lines.clear()
     return taken

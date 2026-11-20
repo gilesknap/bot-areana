@@ -104,16 +104,14 @@ export class ArenaView {
   }
 
   play(): void {
-    if (this.clock.atEnd) this.rewind();
-    this.clock.stepTo = null;
-    this.clock.playing = true;
+    if (this.clock.ended) this.rewind();
+    this.clock.play();
     this.scene.wake();
   }
 
   /** Stop where it is, including a step playing up to its line. */
   pause(): void {
-    this.clock.playing = false;
-    this.clock.stepTo = null;
+    this.clock.pause();
   }
 
   /**
@@ -167,6 +165,12 @@ export class ArenaView {
   onEvent(cb: (event: SimEvent, tick: number) => void): Unsubscribe {
     this.scene.listeners.event.add(cb);
     return () => this.scene.listeners.event.delete(cb);
+  }
+
+  /** Playback started or stopped moving (playing, or a step playing up to its line). */
+  onMoving(cb: (moving: boolean) => void): Unsubscribe {
+    this.scene.listeners.moving.add(cb);
+    return () => this.scene.listeners.moving.delete(cb);
   }
 
   /** The script line shown changed (null: none, e.g. after a reset or rewind). */

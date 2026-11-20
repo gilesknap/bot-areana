@@ -169,8 +169,8 @@ Game exceptions (`BOT_ERRORS` in `src/shared/errors.ts`): `BlasterNotReady`, `Ou
 9. **Line records**: `bootstrap.py` records each line of `main.py` as it starts (`sys.monitoring`
    LINE events on main.py's code objects only) and hands them over with the next bot call, or at
    the end of the script; the runtime stamps them with the current tick (`LineRecord`) and sends
-   them with the frames. At most 100 are kept between two calls (the first ones; the last slot
-   then ends on the call's line, or the line that raised), so a long loop that never calls the bot
+   them with the frames. At most 100 are kept between two calls (the first ones; past the cap
+   the last slot is set to the line making the call, or the line that raised), so a long loop that never calls the bot
    neither grows memory nor stays slowed down. Step mode
    walks these lines and the editor highlights the current one.
 

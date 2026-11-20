@@ -99,6 +99,13 @@ describe('python runtime (real Pyodide, test sim)', () => {
     expect(r.lines.at(-1)).toEqual({ tick: 30, line: 4 });
   });
 
+  it('hands over the line making the call, even past the cap', async () => {
+    const r = await run('for i in range(300):\n    if i == 299:\n        bot.wait(1)\n    y = i');
+    const atStart = r.lines.filter((l) => l.tick === 0);
+    expect(atStart).toHaveLength(MAX_LINES_PER_CALL);
+    expect(atStart.at(-1)!.line).toBe(3);
+  });
+
   it('ends on the line that raised, even past the cap', async () => {
     const r = await run('for i in range(200):\n    a = i\n    b = 10 / (150 - i)');
     expect(r.error?.line).toBe(3);

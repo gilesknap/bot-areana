@@ -58,6 +58,22 @@ export class PlaybackClock {
     return this.finished && this.frames.length > 0 && this.time >= this.lastIndex;
   }
 
+  /** The end was signalled (playback reached the last frame and every line up to it). */
+  get ended(): boolean {
+    return this.endSignalled;
+  }
+
+  play(): void {
+    this.stepTo = null;
+    this.playing = true;
+  }
+
+  /** Stop where it is, including a step playing up to its line. */
+  pause(): void {
+    this.playing = false;
+    this.stepTo = null;
+  }
+
   push(frames: readonly Frame[], lines: readonly LineRecord[] = []): void {
     for (const f of frames) this.frames.push(f);
     for (const l of lines) this.lines.push(l);
@@ -112,6 +128,8 @@ export class PlaybackClock {
       this.arrive(this.stepTo);
       return this.collect();
     }
+    // Lines for earlier ticks that arrived after a one-tick step (at the streaming frontier) are past.
+    while (this.lineIndex + 1 < this.lines.length && this.lines[this.lineIndex + 1]!.tick < this.index) this.lineIndex++;
     const next = this.lines[this.lineIndex + 1];
     if (next && next.tick <= this.lastIndex) {
       if (next.tick <= this.index) this.arrive(this.lineIndex + 1);
@@ -137,7 +155,9 @@ export class PlaybackClock {
       reached.push(this.frames[this.emitted]!);
     }
     let ended = false;
-    if (this.atEnd && !this.endSignalled) {
+    // Lines at the last tick still to step through come first (the result would cover them).
+    const lineLeft = (this.lines[this.lineIndex + 1]?.tick ?? Infinity) <= this.lastIndex;
+    if (this.atEnd && !lineLeft && !this.endSignalled) {
       this.endSignalled = true;
       this.playing = false;
       ended = true;

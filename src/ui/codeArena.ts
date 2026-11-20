@@ -300,6 +300,7 @@ export function codeArenaScreen(state: AppState, ctx: LevelContext): Screen {
     result = null;
     pendingError = null;
     justCleared = false;
+    stepOnLines = false;
     overlay.hidden = true;
     status.hidden = true;
     editor.showError(null);
@@ -324,6 +325,10 @@ export function codeArenaScreen(state: AppState, ctx: LevelContext): Screen {
     if (e.type === 'print') log(e.text, e.stream === 'stderr' ? 'err' : e.stream === 'log' ? 'log' : 'out', tick);
     const s = sfxForEvent(e);
     if (s) sfx(s);
+  });
+  // A step playing up to its line shows Pause (pressing it stops there), and Play once it arrives.
+  arena.onMoving((moving: boolean) => {
+    if (phase !== 'idle') setPlaying(moving);
   });
   arena.onLine((line: number | null) => editor.showLine(phase === 'idle' ? null : line));
   arena.onEnd(() => {
@@ -385,6 +390,7 @@ export function codeArenaScreen(state: AppState, ctx: LevelContext): Screen {
       // Play again after the end: a fresh run of the same script.
       return void startRun();
     }
+    stepOnLines = false;
     setPlaying(!playing);
     if (playing) arena.play();
     else arena.pause();
