@@ -106,7 +106,7 @@ Run both scripts in today's single worker and interpreter, and switch between th
     the other bot's code. For a game against a stranger's shared bot that is a cheating channel we
     cannot close. Shared module state (`random`, `sys.stdout`) also has to be swapped at every
     switch, and a stuck loop in either script freezes both.
-  - **Browser support**: needs JSPI (see the support table).
+  - **Browser support**: needs JSPI (see the support table below).
 
 ### (c) Two workers exchanging turns by postMessage
 
@@ -128,9 +128,10 @@ that:
 - **Watchdog**: per worker, as today. A stuck bot is attributable to its own worker; kill it and the
   bot stops; the other bot carries on.
 - **Memory**: two interpreters.
-- **Speed**: one message round trip per call (plus a JSPI suspend). Calls are per action, not per
-  tick, so even a bot that reads a sensor every tick for 3 minutes makes ~5,400 calls; at well
-  under a millisecond each the run still finishes faster than playback needs.
+- **Speed**: one message round trip per call plus a JSPI suspend. Calls are per action, not per
+  tick, so even a bot that reads a sensor every tick for 3 minutes makes ~5,400 calls. At under
+  a millisecond each (Chromium, Firefox) the run finishes long before playback needs it. WebKit's
+  slower suspend (see below) can fall behind 2× and 4× playback in that worst case.
 - **Browser support**: needs JSPI, but **not** cross-origin isolation.
 
 ### (d) Record one bot's action trace and replay it
@@ -167,11 +168,32 @@ What was actually run (Pyodide 314.0.7, the pinned version):
 | `loadPackage('greenlet')` | Node 22.23 | "No known package with name 'greenlet'" |
 | memory | Node 22.23 | wasm heap 30 MB per instance; RSS +107 MB for the first `loadPyodide`, +45 MB for a second in the same process; ~1.3 to 1.5 s to load each |
 | another namespace's objects via `gc.get_objects()` | Node 22.23 | found the other "bot" and read its attributes |
-| browsers (module worker, CDN Pyodide, same two-script test) | CI: Chromium, Firefox, WebKit via Playwright | BROWSER_RESULTS |
+| browsers (module worker, CDN Pyodide, same two-script test) | CI: Chromium, Firefox, WebKit via Playwright | all three: `WebAssembly.Suspending` present; `can_run_sync()` `True` under `runPythonAsync`; the two scripts interleaved correctly (A and B each got ticks 1, 2, 3); suspend + resume ~165 µs (Chromium), ~310 µs (Firefox), ~8.5 ms (WebKit). `SharedArrayBuffer` undefined (the page is not cross-origin isolated) |
 
 ## Browser support for JSPI
 
-BROWSER_TABLE
+The browser spike was a throwaway Playwright spec (not committed) run in CI on this branch with
+Playwright 1.65.1's browsers: it starts a module worker from a blob, imports Pyodide from the
+jsDelivr CDN exactly as `src/python/worker.ts` does, and runs the same two-script test as the Node
+spike.
+
+| engine (Playwright 1.65.1, headless Linux) | JSPI | `run_sync` in a worker | suspend + resume |
+|---|---|---|---|
+| Chromium 159 | yes | yes | ~165 µs |
+| Firefox 159 | yes | yes | ~310 µs |
+| WebKit (Safari 27.2 user agent) | yes | yes | ~8.5 ms |
+| Node 22.23 (V8 12.4) | only with `--experimental-wasm-jspi` | yes, with the flag | ~160 µs |
+
+Caveats:
+
+- Playwright's WebKit is a Linux build, not Apple's Safari. It suggests current WebKit has JSPI, but
+  check on a real Mac and iPad before promising Safari.
+- WebKit's suspend is ~50 times slower. A worst case of 2 bots each reading a sensor every tick for
+  a 3-minute match is ~10,800 calls, about 90 s of switching: still ahead of 1× playback (180 s),
+  but 2× and 4× playback would catch up with the run and wait. Typical scripts make far fewer calls
+  (a `forward(100)` is one call for ~100 ticks).
+- Firefox in CI has no WebGL, so Phaser falls back to its canvas renderer there. That is an
+  environment limit, unrelated to JSPI.
 
 ## Comparison
 
@@ -194,10 +216,11 @@ BROWSER_TABLE
 lockstep scheduler on the main thread.** It keeps today's sandbox exactly as it is for each
 bot, needs no cross-origin isolation (so it stays on plain GitHub Pages), is deterministic by
 construction, and changes nothing for the novice. Single-player mode keeps today's fully
-synchronous path, so nothing regresses where JSPI is missing; the duel mode is feature-detected
-and shows "needs a recent Chrome, Edge or Firefox" elsewhere. If Safari support becomes a
-requirement, (a) with coi-serviceworker can later replace the JSPI wait inside the same
-two-worker design, because the coordinator and scheduler do not change.
+synchronous path, so nothing regresses where JSPI is missing. The spike found JSPI in current
+Chromium, Firefox and WebKit, so the duel mode only needs a feature check
+(`typeof WebAssembly.Suspending === 'function'`) and an "update your browser" message for older
+ones. If JSPI ever has to be avoided, (a) with coi-serviceworker can replace the JSPI wait inside
+the same two-worker design, because the coordinator and scheduler do not change.
 
 (d) is a cheap extra, not an alternative: "race a friend's ghost" is a good warm-up mode that
 needs almost none of the work above.
@@ -220,12 +243,13 @@ needs almost none of the work above.
    consoles (tabs), both HUDs, the opponent's script read-only. Arena: a duel map or two without
    objectives, mirrored spawns.
 5. **Tests**: headless duel determinism (same inputs give identical frames, in either message
-   order); a Playwright duel smoke on Chromium; the mode hidden on WebKit.
+   order); a Playwright duel smoke on all three browsers.
 
 ## Open questions for the owner
 
-1. **Browser reach**: is "Chrome, Edge and Firefox only" acceptable for the duel mode, or must it
-   work in Safari too (which forces option (a) and coi-serviceworker)?
+1. **Browser reach**: is "a browser with JSPI" acceptable for the duel mode? Current Chromium,
+   Firefox and WebKit builds have it (spike), but older Safari and iPad versions will not; the only
+   way to reach those is option (a) with coi-serviceworker.
 2. **Fairness of designs**: does a duel use a shared budget (weight and power limits per arena) so
    both bots are built under the same rules, and which parts are allowed?
 3. **Opponent code visibility**: may you read the opponent's script before or after the fight?

@@ -16,9 +16,10 @@ TypeScript (strict) + Vite, Phaser 3 (arena), CodeMirror 6 (editor), Pyodide in 
 | `npm test` | Vitest: unit tests + headless level-solution runs (Pyodide in Node) |
 | `npm run build` | typecheck + `vite build` into `dist/` (relative base `./`, so it runs from any Pages folder) |
 | `npm run preview:site` | serve `dist/` as Pages lays it out (`/bot-areana/main/`, `/bot-areana/v0.1.0/`, `switcher.json`) |
-| `npm run test:e2e` | Playwright smoke, stuck-loop watchdog and version picker against `preview:site` |
+| `npm run test:e2e` | Playwright smoke, stuck-loop watchdog and version picker against `preview:site` (`-- --project=chromium` for one browser) |
 
-CI (`.github/workflows/ci.yml`): typecheck, vitest, build, Playwright (chromium); on push to
+CI (`.github/workflows/ci.yml`): typecheck, vitest, build, Playwright (every spec on Chromium,
+the smoke spec on Firefox and WebKit, one job each in the Playwright container); on push to
 `main` or a `v*` tag publishes the build to its own folder of the `gh-pages` branch (see the
 README's Deploying section).
 
@@ -41,7 +42,7 @@ src/
   save/          IndexedDB persistence, profiles, export/import JSON, share-URL encode/decode
   audio/         procedural jsfxr-style SFX + mute
   levels/        10 LevelDefs, unlock rules, reference solutions (.py) + headless levels test
-tests/e2e/       Playwright smoke + watchdog
+tests/e2e/       Playwright smoke (all browsers), watchdog and version picker (Chromium)
 ```
 
 Dependency direction (arrows = "imports"):

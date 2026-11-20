@@ -47,8 +47,9 @@ npm run test:e2e    # Playwright smoke: build a bot, run level 1, see the victor
 The headless tests run real Pyodide in Node (the `pyodide` npm package). The browser loads
 Pyodide from the jsDelivr CDN, so the game needs a network connection on first load.
 
-Playwright needs Chromium: `npx playwright install --with-deps chromium`. `npm run test:e2e` saves a
-picture of each screen to `test-results/screens/` (CI uploads them in the `playwright-report` artifact);
+Playwright needs its browsers: `npx playwright install --with-deps chromium firefox webkit` (or run
+one with `npm run test:e2e -- --project=chromium`). `npm run test:e2e` saves a picture of each screen
+to `test-results/screens/<browser>/` (CI uploads them in the `playwright-report-<browser>` artifacts);
 copy them from there to `docs/screenshots/` to refresh the docs.
 
 Docs:
