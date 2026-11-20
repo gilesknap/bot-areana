@@ -83,6 +83,7 @@ jobs:
           path: |
             playwright-report
             test-results
+            diag-out
 
   # Publish to one folder of the gh-pages branch (main/, a v* tag, or a back-filled ref), keeping
   # every other version, and regenerate the root switcher.json and index.html.

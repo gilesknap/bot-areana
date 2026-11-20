@@ -2,7 +2,8 @@
  * Main-thread side of the Python bridge: owns the worker, relays a run's frames and result,
  * and runs the watchdog. A script stuck in a loop that never calls the bot keeps the worker
  * busy forever; after `watchdogMs` of silence the worker is terminated (keeping the frames
- * already received), a lost result is reported and a fresh worker is started.
+ * already received), a lost result is reported and the spare worker takes over. The spare
+ * boots while a run is in progress, so Retry after a stopped run doesn't wait for Python again.
  */
 import { WATCHDOG_MESSAGE, WATCHDOG_TIP, type ScriptError } from '../shared/errors';
 import type { Frame, WorldInit } from '../shared/frames';
@@ -47,11 +48,21 @@ interface ActiveRun {
 const defaultWorker = (): WorkerLike =>
   new Worker(new URL('./worker.ts', import.meta.url), { type: 'module' }) as unknown as WorkerLike;
 
+/** One worker and its boot state. */
+interface Slot {
+  worker: WorkerLike;
+  ready: Promise<void>;
+  isReady: boolean;
+}
+
 export class PythonRunner {
-  /** Resolves when Python is loaded; rejects if it can't be. Replaced when the worker restarts. */
-  ready!: Promise<void>;
-  private worker!: WorkerLike;
-  private isReady = false;
+  private current!: Slot;
+  /**
+   * A second worker booting in the background, so that a killed worker (cancel, watchdog) is
+   * replaced by a warm one instead of a multi-second reboot. Started when a run is posted or a
+   * worker is killed; at most one.
+   */
+  private spare: Slot | null = null;
   private active: ActiveRun | null = null;
   private nextId = 1;
   private readonly createWorker: () => WorkerLike;
@@ -61,13 +72,18 @@ export class PythonRunner {
   constructor(options: PythonRunnerOptions = {}) {
     this.createWorker = options.createWorker ?? defaultWorker;
     this.watchdogMs = options.watchdogMs ?? 3000;
-    this.spawn();
+    this.current = this.spawn();
     this.timer = setInterval(() => this.checkWatchdog(), Math.min(250, this.watchdogMs / 4));
+  }
+
+  /** Resolves when Python is loaded; rejects if it can't be. Replaced when the worker restarts. */
+  get ready(): Promise<void> {
+    return this.current.ready;
   }
 
   /** True once the current worker has Python loaded. */
   get booted(): boolean {
-    return this.isReady;
+    return this.current.isReady;
   }
 
   /** Start a run (cancelling any run in progress). Handlers fire as messages arrive. */
@@ -79,7 +95,9 @@ export class PythonRunner {
       () => {
         if (this.active !== run) return;
         run.lastHeard = Date.now();
-        this.worker.postMessage({ type: 'run', runId: run.id, ...req });
+        this.current.worker.postMessage({ type: 'run', runId: run.id, ...req });
+        // This worker may have to be killed to stop the script: have a replacement warming up.
+        this.spare ??= this.spawn();
       },
       (e: unknown) => {
         if (this.active === run) this.active = null;
@@ -92,33 +110,40 @@ export class PythonRunner {
   dispose(): void {
     clearInterval(this.timer);
     this.active = null;
-    this.worker.terminate();
+    this.kill(this.current);
+    if (this.spare) this.kill(this.spare);
+    this.spare = null;
   }
 
-  private spawn(): void {
+  private spawn(): Slot {
     const worker = this.createWorker();
-    this.worker = worker;
-    this.isReady = false;
-    this.ready = new Promise<void>((resolve, reject) => {
+    const slot: Slot = { worker, ready: Promise.resolve(), isReady: false };
+    slot.ready = new Promise<void>((resolve, reject) => {
       worker.onmessage = (event) => {
         const msg = event.data;
         if (msg.type === 'ready') {
-          this.isReady = true;
+          slot.isReady = true;
           resolve();
-        }
-        else if (msg.type === 'fatal') {
+        } else if (msg.type === 'fatal') {
           reject(new Error(msg.message));
-          this.onWorkerFailed(msg.message);
-        } else this.onRunMessage(msg);
+          if (slot === this.current) this.onWorkerFailed(msg.message);
+        } else if (slot === this.current) this.onRunMessage(msg);
       };
       worker.onerror = (event) => {
         const message = event.message || 'the Python worker crashed';
         reject(new Error(message));
-        this.onWorkerFailed(message);
+        if (slot === this.current) this.onWorkerFailed(message);
       };
     });
     // Callers that never run anything shouldn't see an unhandled rejection.
-    this.ready.catch(() => {});
+    slot.ready.catch(() => {});
+    return slot;
+  }
+
+  private kill(slot: Slot): void {
+    slot.worker.onmessage = null;
+    slot.worker.onerror = null;
+    slot.worker.terminate();
   }
 
   private onRunMessage(msg: Exclude<WorkerToMain, { type: 'ready' | 'fatal' }>): void {
@@ -166,7 +191,7 @@ export class PythonRunner {
   private onWorkerFailed(message: string): void {
     const run = this.active;
     // Before 'ready' the rejected `ready` promise reports it (onFatal) instead.
-    if (!run || !this.isReady) return;
+    if (!run || !this.current.isReady) return;
     if (!run.errored) {
       run.handlers.onError?.({ type: 'InternalError', message, tick: run.lastFrame?.tick ?? 0, friendly: 'Something went wrong inside Bot Arena itself - not your code. Try running again.' });
     }
@@ -179,12 +204,12 @@ export class PythonRunner {
     this.restart();
   }
 
+  /** Kill the current worker, carry on with the spare (or a fresh worker) and start a new spare. */
   private restart(): void {
     this.active = null;
-    this.worker.onmessage = null;
-    this.worker.onerror = null;
-    this.worker.terminate();
-    this.spawn();
+    this.kill(this.current);
+    this.current = this.spare ?? this.spawn();
+    this.spare = this.spawn();
   }
 }
 

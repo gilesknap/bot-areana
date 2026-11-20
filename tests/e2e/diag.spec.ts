@@ -40,10 +40,10 @@ async function report(page: Page, label: string) {
 
 async function traced(page: Page, name: string, body: () => Promise<void>) {
   const browser = page.context().browser()!;
-  mkdirSync('test-results/diag', { recursive: true });
+  mkdirSync('diag-out', { recursive: true });
   await browser.startTracing(page, {
-    path: `test-results/diag/${name}.json`,
-    categories: ['devtools.timeline', 'disabled-by-default-devtools.timeline', 'v8', 'v8.execute', 'blink', 'toplevel', 'disabled-by-default-v8.compile', 'loading', 'gpu'],
+    path: `diag-out/${name}.json`,
+    categories: ['devtools.timeline', 'disabled-by-default-devtools.timeline', 'v8', 'v8.execute', 'blink', 'toplevel', 'disabled-by-default-v8.compile', 'loading', 'gpu', 'disabled-by-default-devtools.timeline.frame', 'cc', 'viz', 'disabled-by-default-gpu.service'],
   });
   try {
     await body();
@@ -100,7 +100,14 @@ test('D: campaign only, no Python (worker blocked)', async ({ page }) => {
   await page.goto('./#/level/l01/code');
   await page.locator('.cm-content').waitFor();
   console.log(`DIAG D code screen visible in ${Date.now() - s} ms`);
-  await page.waitForTimeout(6000);
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send('Profiler.enable');
+  await cdp.send('Profiler.setSamplingInterval', { interval: 200 });
+  await cdp.send('Profiler.start');
+  await traced(page, 'D', () => page.waitForTimeout(4000));
+  const { profile } = await cdp.send('Profiler.stop');
+  writeFileSync('diag-out/D.cpuprofile', JSON.stringify(profile));
+  await page.waitForTimeout(1000);
   await report(page, 'D-no-python');
-  writeFileSync('test-results/diag/D.done', '');
+  writeFileSync('diag-out/D.done', '');
 });
