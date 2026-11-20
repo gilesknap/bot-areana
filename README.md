@@ -2,6 +2,10 @@
 
 Build a robot from parts, program it in real Python, send it into arenas.
 
+**[Play it](https://gilesknap.github.io/bot-areana/)** - the newest release, in your browser.
+The latest development build is at <https://gilesknap.github.io/bot-areana/main/>; older
+versions are in the game's **Settings -> Version** picker.
+
 Bot Arena is a browser game that teaches Python to teen and adult beginners. Each level is a
 small puzzle: pick a chassis, drive train, sensors and weapons in the Workshop, then write the
 Python that drives your bot. The Python is real CPython (Pyodide, running in a Web Worker), so
