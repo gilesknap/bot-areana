@@ -99,9 +99,9 @@ class Hunter:
 Hunter().hunt()
 `,
   hints: [
-    'In attack(): bot.drive.turn(target.bearing), then fire if bot.blaster.ready() and the target is within about 350 cm.',
-    'If the target is further than that, drive part of the way: bot.drive.forward(target.distance - 300).',
-    'Shields win this one: raise bot.shield whenever an enemy is within about 400 cm and the battery is above 15%, drop it otherwise.',
+    'In attack(): bot.drive.turn(target.bearing), then fire if bot.blaster.ready() and the target is within about 450 cm.',
+    'If the target is further than that, drive part of the way: bot.drive.forward(target.distance - 350).',
+    'Shields win this one: raise bot.shield whenever an enemy is within about 500 cm and the battery is above 15%, drop it otherwise.',
   ],
   solution: {
     design: {

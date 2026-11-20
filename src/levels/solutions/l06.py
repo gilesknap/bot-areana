@@ -7,7 +7,7 @@ def drive_until_bump():
     while not bumped():
         bot.wait(0.1)
     # Back off to the middle of the next corridor.
-    bot.drive.backward(22)
+    bot.drive.backward(28)
 
 
 while True:

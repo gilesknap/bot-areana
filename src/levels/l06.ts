@@ -63,7 +63,7 @@ def drive_until_bump():
     # Start driving WITHOUT waiting, so the next lines run while you move:
     bot.drive.forward(1000, wait=False)
     # TODO: keep checking the bumper until it says True,
-    #       then back off a little (the corridors are 80 cm wide).
+    #       then back off a little (the corridors are 100 cm wide).
     pass
 
 drive_until_bump()
@@ -72,7 +72,7 @@ bot.drive.turn(90)
 `,
   hints: [
     'Inside the function: while not bot.front_bumper.hit(): bot.wait(0.1)',
-    'After a bump, bot.drive.backward(22) puts you in the middle of the next corridor.',
+    'After a bump, bot.drive.backward(28) puts you in the middle of the next corridor.',
     'Finish with:  while True:  drive_until_bump()  bot.drive.turn(90). The match ends when the last core is yours.',
   ],
   solution: {

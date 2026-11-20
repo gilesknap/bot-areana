@@ -9,7 +9,7 @@ export const l07: LevelDef = {
   label: 'D-07',
   brief:
     "Something with wheels and a grudge is patrolling the east hall. It ignores you until you " +
-    "get within about 250 cm, then it gets rude. Your new radar lists everything nearby, " +
+    "get within about 300 cm, then it gets rude. Your new radar lists everything nearby, " +
     "nearest first. Find the thing whose kind is \"bot\", face it, and introduce your blaster.",
   lesson: {
     title: 'iterating objects',
@@ -62,7 +62,7 @@ export const l07: LevelDef = {
     { type: 'damage', max: 40, label: 'Take 40 damage or less' },
   ],
   seed: 707,
-  starter: `# bot.radar.scan() returns a LIST of things it can see (up to 500 cm away).
+  starter: `# bot.radar.scan() returns a LIST of things it can see (up to 600 cm away).
 # Each thing is an OBJECT with attributes you read with a dot:
 #   thing.kind       "bot", "turret", "flag", "waypoint" or "core"
 #   thing.bearing    degrees to turn to face it (+ is right)
@@ -78,7 +78,7 @@ while True:
   hints: [
     'Inside the for loop:  if thing.kind == "bot":  then  bot.drive.turn(thing.bearing)',
     'After turning, fire only when ready:  if bot.blaster.ready(): bot.blaster.fire()',
-    "It won't come to you. If thing.distance is more than 300, drive closer with bot.drive.forward(60) instead of firing. A shorter wait, like 0.5, keeps you on target.",
+    "It won't come to you. If thing.distance is more than 400, drive closer with bot.drive.forward(75) instead of firing. A shorter wait, like 0.5, keeps you on target.",
   ],
   solution: {
     design: { chassis: 'chassis_m', drive: 'wheels', slots: { front: 'blaster', rear: 'radar', centre: 'battery' } },
