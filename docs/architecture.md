@@ -157,7 +157,7 @@ Game exceptions (`BOT_ERRORS` in `src/shared/errors.ts`): `BlasterNotReady`, `Ou
 7. **Watchdog** (client): after `started`, if the worker sends nothing for 3 s wall time, terminate
    it, report `ScriptError{type:'Watchdog', friendly: WATCHDOG_MESSAGE}` at the last tick
    received, synthesize a lost `MatchResult` (`reason:'watchdog'`), keep the frames so far, and
-   spawn a fresh worker. The worker flushes frames at least every ~50 ms while calls happen, so
+   switch to the spare worker (below). The worker flushes frames at least every ~50 ms while calls happen, so
    only call-free loops trip it. Per-tick print events are capped (~200) to bound memory.
 8. Pause / step / speed / reset are playback controls on the already-computed frames. No editing
    mid-run; reset discards the run.
@@ -223,6 +223,9 @@ One run at a time per worker; each run gets a fresh Python namespace. Messages f
 - `client.ts` (main thread): `class PythonRunner { ready: Promise<void>; run(req, handlers): { cancel() }; dispose() }`
   with the watchdog; handlers `onStarted(world)`, `onFrames(frames)`, `onError(err)`, `onDone(result)`,
   and optional `onFatal(message)` (Python could not load, or the worker failed mid-run).
+  Stopping a script (cancel, watchdog, crash) means terminating its worker, so the runner keeps
+  one spare worker booting in the background, started when a run is posted or a worker is
+  killed; the spare takes over at once and Retry doesn't wait for Python again.
 - `headless.ts` (Node, tests only): `runHeadless(req: RunRequest): Promise<{ world, frames, result, error?, prints: string[] }>`
   using the `pyodide` npm package (instance cached across calls) and the same `runtime.ts`.
   An optional second argument `{ createMatch?, watchdogMs? }` swaps the sim (tests) or the
@@ -244,7 +247,9 @@ One run at a time per worker; each run gets a fresh Python namespace. Messages f
   ground, scorch marks + smoke + wreck debris where things die, headlight beam on the player,
   radar sweep on `scan`, muzzle flash, glowing bolts with trails, LOCK brackets + distance on the
   enemy the player's blaster points at, vignette. Animated (lava glow and upwellings, sweep, smoke,
-  corner lights, dust motes). The canvas has `devicePixelRatio` pixels per CSS pixel (crisp on HiDPI).
+  corner lights, dust motes). With software WebGL (no GPU, e.g. headless CI) the browser reads
+  each WebGL frame back on the main thread, so there the hall is still while idle: the Phaser
+  loop sleeps unless playing, and draws once after each change. The canvas has `devicePixelRatio` pixels per CSS pixel (crisp on HiDPI).
   The HUD overlay (HULL / ENERGY bars, objective counter) is DOM: `ArenaHud` in `render/hud.ts`,
   fed by the UI from `onTick` / `onEvent`.
 - `glyphs.ts`: SVG strings for the UI, matching Main.dc.html: `partGlyphSvg(partId | chassisId, size?)`,

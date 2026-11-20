@@ -58,4 +58,5 @@ before the objectives were complete"), the three hints and the 3★ victory all 
 1440 px the editor fits about 60 characters, and the editor doesn't wrap lines. Level 1's
 starter comments were cut off mid-word, so they are reflowed to fit. Every other level's starter
 also has comment lines longer than 60 characters. Line wrapping in the editor (UI, not level
-data) would fix those, so they are left for that.
+data) would fix those, so they are left for that. The editor now wraps long lines, keeping a
+wrapped line's indent.
