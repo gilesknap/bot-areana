@@ -37,9 +37,9 @@ export class SimBot {
   energy: number;
   shield = false;
   alive = true;
-  /** Scalar ground speed (cm/s, >= 0) for wheels/tracks. */
+  /** Scalar ground speed (world units/s, >= 0) for wheels/tracks. */
   speed = 0;
-  /** Velocity for hover (cm/s). */
+  /** Velocity for hover (world units/s). */
   vx = 0;
   vy = 0;
   command: DriveCommand | null = null;
@@ -98,7 +98,7 @@ export class SimBot {
     return this.stats.topSpeed * this.speedFactor;
   }
 
-  /** Current speed in cm/s whatever the drive. */
+  /** Current speed in world units/s whatever the drive. */
   get currentSpeed(): number {
     return this.hover ? Math.hypot(this.vx, this.vy) : this.speed;
   }

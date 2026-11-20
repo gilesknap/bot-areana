@@ -5,7 +5,8 @@ import { makeLevel } from '../sim/testkit';
 import { runMatchHeadless } from './headless';
 
 const design: BotDesign = { chassis: 'chassis_m', drive: 'wheels', slots: { front: 'rangefinder', rear: 'gps' } };
-// Player spawns at the centre (600, 600) facing up; the flag is 200 cm straight ahead.
+// Player spawns at the centre (600, 600 world units = 750, 750 cm) facing up; the flag is 200 units
+// (250 cm) straight ahead.
 const level = makeLevel({
   objectives: [{ type: 'reach', id: 'flag', label: 'Reach the flag', target: { x: 600, y: 400 }, radius: 30 }],
   timeLimit: 30,
@@ -13,10 +14,10 @@ const level = makeLevel({
 
 describe('python + real sim', () => {
   it('drives to the flag and wins', async () => {
-    const script = 'x, y = bot.gps.position()\nprint(x, y, bot.gps.heading())\nbot.drive.forward(200)\nprint("never")\n';
+    const script = 'x, y = bot.gps.position()\nprint(x, y, bot.gps.heading())\nbot.drive.forward(250)\nprint("never")\n';
     const r = await runMatchHeadless(level, design, script);
     expect(r.error).toBeUndefined();
-    expect(r.prints[0]).toBe('600.0 600.0 0.0');
+    expect(r.prints[0]).toBe('750.0 750.0 0.0');
     expect(r.result).toMatchObject({ won: true, reason: 'objectives_complete' });
     expect(r.result.stars).toBeGreaterThanOrEqual(1);
     expect(r.frames.map((f) => f.tick)).toEqual(r.frames.map((_, i) => i));

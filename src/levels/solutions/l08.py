@@ -1,5 +1,5 @@
 # Round the lava by the bridge at the top.
-route = [(280, 120), (380, 40), (520, 40), (600, 440), (820, 120)]
+route = [(350, 150), (475, 50), (650, 50), (750, 550), (1025, 150)]
 
 leg = 0
 hull = bot.health()

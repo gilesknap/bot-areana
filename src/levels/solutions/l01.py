@@ -1,1 +1,1 @@
-bot.drive.forward(400)
+bot.drive.forward(500)

@@ -1,7 +1,7 @@
 class Hunter:
     def __init__(self):
         # Places to look from when nothing is on radar, visited in turn.
-        self.lookouts = [(440, 320), (200, 200), (680, 200)]
+        self.lookouts = [(550, 400), (250, 250), (850, 250)]
         self.next_lookout = 0
         self.shots = 0
 
@@ -13,15 +13,15 @@ class Hunter:
 
     def guard(self, target):
         # Shield up when something is close, as long as the battery allows.
-        if target.distance < 400 and bot.battery.level() > 15:
+        if target.distance < 500 and bot.battery.level() > 15:
             bot.shield.on()
         else:
             bot.shield.off()
 
     def attack(self, target):
         bot.drive.turn(target.bearing)
-        if target.distance > 300:
-            bot.drive.forward(min(100, target.distance - 260))
+        if target.distance > 375:
+            bot.drive.forward(min(125, target.distance - 325))
         elif bot.blaster.ready():
             bot.blaster.fire()
             self.shots += 1

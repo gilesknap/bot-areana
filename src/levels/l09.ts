@@ -67,7 +67,7 @@ while True:
     # TODO: shoot back! Use bot.radar.scan() to find them.
 `,
   hints: [
-    'Shield on all the time runs the battery flat in under a minute. Only raise it when a bot is within about 350 cm.',
+    'Shield on all the time runs the battery flat in under a minute. Only raise it when a bot is within about 450 cm.',
     'Fighting back helps: a destroyed chaser does no damage. Turn to the nearest "bot" from scan() and fire when ready.',
     'Each loop: scan, decide shield on/off from distance and battery.level(), turn, fire, then bot.wait(0.2).',
   ],

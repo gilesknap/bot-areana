@@ -52,20 +52,20 @@ const fill = (id: string, line: string, code: string) => {
   return s.replace(line, code);
 };
 
-const L3_IF = fill('l03', '    # Drive up the lane, then turn right towards the flag.', '    bot.drive.forward(380)\n    bot.drive.turn(90)\n    bot.drive.forward(240)');
+const L3_IF = fill('l03', '    # Drive up the lane, then turn right towards the flag.', '    bot.drive.forward(500)\n    bot.drive.turn(90)\n    bot.drive.forward(300)');
 const L3_LEFT_ONLY =
-  'bot.drive.turn(-90)\nbot.drive.forward(240)\nbot.drive.turn(90)\nbot.drive.forward(380)\nbot.drive.turn(90)\nbot.drive.forward(240)\n';
+  'bot.drive.turn(-90)\nbot.drive.forward(300)\nbot.drive.turn(90)\nbot.drive.forward(500)\nbot.drive.turn(90)\nbot.drive.forward(300)\n';
 const l3Both = L3_IF.replace(
   '    # Turn right, cross over to the right lane and go up that one.',
-  '    bot.drive.turn(90)\n    bot.drive.forward(480)\n    bot.drive.turn(-90)\n    bot.drive.forward(380)\n    bot.drive.turn(-90)\n    bot.drive.forward(240)',
+  '    bot.drive.turn(90)\n    bot.drive.forward(600)\n    bot.drive.turn(-90)\n    bot.drive.forward(500)\n    bot.drive.turn(-90)\n    bot.drive.forward(300)',
 );
 
 const l5 = (order: string, shoot: string) => `turrets = ${order}
 for x, y in turrets:
     bot.drive.turn(bot.gps.bearing_to(x, y))
 ${shoot}`;
-const L5_MIDDLE_LAST = '[(160, 360), (260, 140), (620, 140), (720, 360), (440, 300)]';
-const L5_MIDDLE_FIRST = '[(440, 300), (160, 360), (260, 140), (620, 140), (720, 360)]';
+const L5_MIDDLE_LAST = '[(200, 450), (325, 175), (775, 175), (900, 450), (550, 375)]';
+const L5_MIDDLE_FIRST = '[(550, 375), (200, 450), (325, 175), (775, 175), (900, 450)]';
 const L5_TWO_SHOTS = `    shots = 0
     while shots < 2:
         while not bot.blaster.ready():
@@ -91,7 +91,7 @@ ${inner}
 `;
 const L7_FIRE = '            if bot.blaster.ready():\n                bot.blaster.fire()';
 const L7_CLOSE_IN =
-  '            if thing.distance > 300:\n                bot.drive.forward(60)\n            elif bot.blaster.ready():\n                bot.blaster.fire()';
+  '            if thing.distance > 400:\n                bot.drive.forward(75)\n            elif bot.blaster.ready():\n                bot.blaster.fire()';
 
 const L8_LOOP = fill(
   'l08',
@@ -105,7 +105,7 @@ const l9 = (fight: boolean) => `while True:
         if thing.kind == "bot":
             near = thing
             break
-    if near is not None and near.distance < 350 and bot.battery.level() > 30:
+    if near is not None and near.distance < 450 and bot.battery.level() > 30:
         bot.shield.on()
     else:
         bot.shield.off()
@@ -116,8 +116,8 @@ const L10_ATTACK = fill(
   'l10',
   '        # TODO: face the target, close in if it is far away, fire when ready.\n',
   `        bot.drive.turn(target.bearing)
-        if target.distance > 350:
-            bot.drive.forward(target.distance - 300)
+        if target.distance > 450:
+            bot.drive.forward(target.distance - 350)
         elif bot.blaster.ready():
             bot.blaster.fire()
 `,
@@ -125,7 +125,7 @@ const L10_ATTACK = fill(
 const L10_SHIELD = L10_ATTACK.replace(
   '    def attack(self, target):\n',
   `    def attack(self, target):
-        if target.distance < 400 and bot.battery.level() > 15:
+        if target.distance < 500 and bot.battery.level() > 15:
             bot.shield.on()
         else:
             bot.shield.off()
@@ -135,18 +135,18 @@ const L10_SHIELD = L10_ATTACK.replace(
 const ATTEMPTS: Record<string, Attempt[]> = {
   l01: [
     { name: 'presses Run on the starter', design: S, script: starter('l01'), expect: { won: false, reason: 'script_ended' } },
-    { name: 'thinks in metres: forward(4)', design: S, script: 'bot.drive.forward(4)\n', expect: { won: false, reason: 'script_ended' } },
-    { name: 'drops .drive: bot.forward(400)', design: S, script: 'bot.forward(400)\n', expect: { won: false, error: 'AttributeError' } },
-    { name: 'two half steps', design: S, script: 'bot.drive.forward(200)\nbot.drive.forward(200)\n', expect: { won: true, stars: 2 } },
-    { name: 'forward(400)', design: S, script: 'bot.drive.forward(400)\n', expect: { won: true, stars: 3 } },
+    { name: 'thinks in metres: forward(5)', design: S, script: 'bot.drive.forward(5)\n', expect: { won: false, reason: 'script_ended' } },
+    { name: 'drops .drive: bot.forward(500)', design: S, script: 'bot.forward(500)\n', expect: { won: false, error: 'AttributeError' } },
+    { name: 'two half steps', design: S, script: 'bot.drive.forward(250)\nbot.drive.forward(250)\n', expect: { won: true, stars: 2 } },
+    { name: 'forward(500)', design: S, script: 'bot.drive.forward(500)\n', expect: { won: true, stars: 3 } },
   ],
   l02: [
-    { name: 'turns the wrong way', design: S, script: `${starter('l02')}bot.drive.turn(90)\nbot.drive.forward(240)\n`, expect: { won: false, reason: 'script_ended' } },
-    { name: 'stops after two legs', design: S, script: `${starter('l02')}bot.drive.turn(-90)\nbot.drive.forward(240)\n`, expect: { won: false, reason: 'script_ended' } },
+    { name: 'turns the wrong way', design: S, script: `${starter('l02')}bot.drive.turn(90)\nbot.drive.forward(300)\n`, expect: { won: false, reason: 'script_ended' } },
+    { name: 'stops after two legs', design: S, script: `${starter('l02')}bot.drive.turn(-90)\nbot.drive.forward(300)\n`, expect: { won: false, reason: 'script_ended' } },
     {
       name: 'overshoots every leg',
       design: S,
-      script: 'bot.drive.forward(440)\nbot.drive.turn(-90)\nbot.drive.forward(300)\nbot.drive.turn(90)\nbot.drive.forward(200)\n',
+      script: 'bot.drive.forward(550)\nbot.drive.turn(-90)\nbot.drive.forward(375)\nbot.drive.turn(90)\nbot.drive.forward(250)\n',
       expect: { won: true, stars: 3 },
     },
   ],
@@ -168,7 +168,7 @@ const ATTEMPTS: Record<string, Attempt[]> = {
     {
       name: 'no loop: four copies of the two lines',
       design: S_GPS,
-      script: [[160, 100], [640, 100], [700, 460], [400, 280]]
+      script: [[200, 125], [800, 125], [875, 575], [500, 350]]
         .map(([x, y]) => `bot.drive.turn(bot.gps.bearing_to(${x}, ${y}))\nbot.drive.forward(bot.gps.distance_to(${x}, ${y}))\n`)
         .join(''),
       expect: { won: true, stars: 2 },
@@ -192,9 +192,9 @@ const ATTEMPTS: Record<string, Attempt[]> = {
     { name: 'all hints: middle turret first', design: M_GUNNER, script: l5(L5_MIDDLE_FIRST, L5_TWO_SHOTS), expect: { won: true, stars: 3 } },
   ],
   l06: [
-    { name: 'calls it twice, no loop', design: S_BUMP, script: l6('    bot.drive.backward(22)', 'drive_until_bump()\nbot.drive.turn(90)\ndrive_until_bump()\nbot.drive.turn(90)\n'), expect: { won: false, reason: 'script_ended' } },
-    { name: 'no bumper: blocking forward into walls', design: S, script: 'while True:\n    bot.drive.forward(1000)\n    bot.drive.backward(22)\n    bot.drive.turn(90)\n', expect: { won: true, stars: 2 } },
-    { name: 'all hints', design: S_BUMP, script: l6('    bot.drive.backward(22)', L6_LOOP), expect: { won: true, stars: 3 } },
+    { name: 'calls it twice, no loop', design: S_BUMP, script: l6('    bot.drive.backward(28)', 'drive_until_bump()\nbot.drive.turn(90)\ndrive_until_bump()\nbot.drive.turn(90)\n'), expect: { won: false, reason: 'script_ended' } },
+    { name: 'no bumper: blocking forward into walls', design: S, script: 'while True:\n    bot.drive.forward(1000)\n    bot.drive.backward(28)\n    bot.drive.turn(90)\n', expect: { won: true, stars: 2 } },
+    { name: 'all hints', design: S_BUMP, script: l6('    bot.drive.backward(28)', L6_LOOP), expect: { won: true, stars: 3 } },
   ],
   l07: [
     { name: 'presses Run on the starter', design: M_RADAR, script: starter('l07'), expect: { won: false, reason: 'time_up' } },
@@ -207,7 +207,7 @@ const ATTEMPTS: Record<string, Attempt[]> = {
     {
       name: 'tracks, straight through the lava',
       design: M_GPS('tracks'),
-      script: L8_LOOP.replace('[(280, 120), (380, 40), (520, 40), (600, 440), (820, 120)]', '[(280, 120), (600, 440), (820, 120)]'),
+      script: L8_LOOP.replace('[(350, 150), (475, 50), (650, 50), (750, 550), (1025, 150)]', '[(350, 150), (750, 550), (1025, 150)]'),
       expect: { won: true, stars: 2 },
     },
     { name: 'tracks + the loop', design: M_GPS('tracks'), script: L8_LOOP, expect: { won: true, stars: 3 } },

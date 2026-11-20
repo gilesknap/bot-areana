@@ -31,7 +31,8 @@ you can export it to a file or share a bot as a link.
 Stuck? Each level has up to three hints, and the API button opens a reference for your parts.
 Free play lets you replay cleared levels with every part you have unlocked and no budget.
 
-Units are centimetres; heading 0 is up and turns clockwise; a bearing is relative to where the
+Units are centimetres: a floor plate is 1 m (100 cm) and a tile is 50 cm, so you can measure by
+counting plates. Heading 0 is up and turns clockwise; a bearing is relative to where the
 bot is facing, positive to the right.
 
 ## Development

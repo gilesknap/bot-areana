@@ -8,12 +8,14 @@ import type { BotFrame, Frame, ProjectileFrame, SimEvent, WorldInit } from '../s
 import type { Rect, Vec2 } from '../shared/geometry';
 import {
   distance,
+  fromCm,
   headingTo,
   headingVector,
   normaliseBearing,
   normaliseHeading,
   TICK_RATE,
   TICK_SECONDS,
+  toCm,
 } from '../shared/geometry';
 import type { LevelDef } from '../shared/level';
 import { MAX_MATCH_SECONDS } from '../shared/level';
@@ -50,7 +52,7 @@ const RAM_MIN_SPEED = 0.2;
 const KAMIKAZE = { damage: 40, radius: 100 };
 const LOW_ENERGY = 0.2;
 const LOW_ENERGY_RESET = 0.3;
-/** Progress below this (cm per tick) counts as "not moving" for blocked detection. */
+/** Progress below this (units per tick) counts as "not moving" for blocked detection. */
 const MIN_PROGRESS = 0.1;
 
 export class Match implements SimMatch, BehaviourWorld {
@@ -124,6 +126,7 @@ export class Match implements SimMatch, BehaviourWorld {
 
   // ---- SimMatch ---------------------------------------------------------------------------
 
+  /** The Python API boundary: distances, positions and speeds arrive and leave in cm (toCm/fromCm). */
   call(attr: string, method: string, args: PyValue[]): PyValue {
     if (this.finished) throw new MatchOver();
     if (attr === '') return this.callCore(method, args);
@@ -136,11 +139,11 @@ export class Match implements SimMatch, BehaviourWorld {
       case 'wheels.forward':
       case 'tracks.forward':
       case 'hover.forward':
-        return this.move(num(args[0]), args[1] !== false);
+        return this.move(fromCm(num(args[0])), args[1] !== false);
       case 'wheels.backward':
       case 'tracks.backward':
       case 'hover.backward':
-        return this.move(-num(args[0]), args[1] !== false);
+        return this.move(-fromCm(num(args[0])), args[1] !== false);
       case 'wheels.turn':
       case 'tracks.turn':
       case 'hover.turn':
@@ -157,8 +160,8 @@ export class Match implements SimMatch, BehaviourWorld {
 
       case 'rangefinder.distance': {
         const d = this.rangefind(p, slot ?? 'front');
-        this.events.push({ type: 'range', botId: p.id, slot: slot ?? 'front', distance: d });
-        return this.after(1, d);
+        this.events.push({ type: 'range', botId: p.id, slot: slot ?? 'front', distance: round1(d) });
+        return this.after(1, round1(toCm(d)));
       }
       case 'radar.scan': {
         p.energy = Math.max(0, p.energy - PARTS.radar.sensor!.energyPerRead);
@@ -167,13 +170,13 @@ export class Match implements SimMatch, BehaviourWorld {
         return this.after(1, this.scan(p, range) as unknown as PyValue);
       }
       case 'gps.position':
-        return this.after(1, [round1(p.x), round1(p.y)]);
+        return this.after(1, [round1(toCm(p.x)), round1(toCm(p.y))]);
       case 'gps.heading':
         return this.after(1, round1(p.heading) % 360);
       case 'gps.bearing_to':
         return this.after(1, round1(normaliseBearing(headingTo(p, xy(args)) - p.heading)));
       case 'gps.distance_to':
-        return this.after(1, round1(distance(p, xy(args))));
+        return this.after(1, round1(toCm(distance(p, xy(args)))));
       case 'bump.hit': {
         const side = slot ?? 'front';
         const hit = p.bumped[side];
@@ -315,7 +318,7 @@ export class Match implements SimMatch, BehaviourWorld {
       along: { x: along.x * dir, y: along.y * dir },
       stalled: 0,
     };
-    return this.drive(cmd, wait, () => round1(cmd.kind === 'move' ? cmd.moved : 0));
+    return this.drive(cmd, wait, () => round1(toCm(cmd.kind === 'move' ? cmd.moved : 0)));
   }
 
   /** Start a drive command; with wait, step until it ends (done, blocked or replaced). */
@@ -364,14 +367,14 @@ export class Match implements SimMatch, BehaviourWorld {
     this.events.push({ type: 'shield', botId: b.id, on });
   }
 
-  /** Rangefinder: cm from the bot's edge to the first wall or bot along the slot's direction. */
+  /** Rangefinder: world units from the bot's edge to the first wall or bot along the slot's direction. */
   private rangefind(b: SimBot, slot: DirectionalSlot): number {
     const range = PARTS.rangefinder.sensor!.range;
     const dir = headingVector(b.heading + SLOT_ANGLE[slot]);
     let t = Infinity;
     for (const r of this.arena.solids) t = Math.min(t, rayRect(b, dir, r));
     for (const o of this.bots) if (o !== b && o.alive) t = Math.min(t, rayCircle(b, dir, o, o.radius));
-    return round1(Math.min(range, Math.max(0, t - b.radius)));
+    return Math.min(range, Math.max(0, t - b.radius));
   }
 
   private scan(b: SimBot, range: number): ScanResult[] {
@@ -388,9 +391,9 @@ export class Match implements SimMatch, BehaviourWorld {
       .map(({ t, d }) => ({
         kind: t.kind,
         bearing: round1(normaliseBearing(headingTo(b, t) - b.heading)),
-        distance: round1(d),
-        x: round1(t.x),
-        y: round1(t.y),
+        distance: round1(toCm(d)),
+        x: round1(toCm(t.x)),
+        y: round1(toCm(t.y)),
       }));
   }
 
@@ -775,6 +778,7 @@ function num(v: PyValue | undefined): number {
   return Number.isNaN(n) ? 0 : n;
 }
 
+/** A point the player gave in cm, as world units. */
 function xy(args: PyValue[]): Vec2 {
-  return { x: num(args[0]), y: num(args[1]) };
+  return { x: fromCm(num(args[0])), y: fromCm(num(args[1])) };
 }

@@ -61,7 +61,7 @@ export const l05: LevelDef = {
   ],
   seed: 505,
   starter: `# Turret positions, from the yard plans.
-turrets = [(160, 360), (260, 140), (620, 140), (720, 360), (440, 300)]
+turrets = [(200, 450), (325, 175), (775, 175), (900, 450), (550, 375)]
 
 for x, y in turrets:
     bot.drive.turn(bot.gps.bearing_to(x, y))
@@ -74,7 +74,7 @@ for x, y in turrets:
   hints: [
     'Each turret takes two hits. Count your shots in a variable: shots = 0 ... shots = shots + 1',
     'Wait for the blaster inside a loop:  while not bot.blaster.ready():  then  bot.wait(0.1)',
-    'The middle turret (440, 300) is close enough to shoot back. Move it to the front of the list.',
+    'The middle turret (550, 375) is close enough to shoot back. Move it to the front of the list.',
   ],
   solution: {
     design: { chassis: 'chassis_m', drive: 'wheels', slots: { front: 'blaster', rear: 'gps', centre: 'battery' } },

@@ -56,7 +56,7 @@ export const l08: LevelDef = {
   seed: 808,
   starter: `# Rough ground slows wheels to a crawl. Tracks ignore it.
 # The lava channel burns 25 hull per second. There's a cool bridge at the top.
-route = [(280, 120), (380, 40), (520, 40), (600, 440), (820, 120)]
+route = [(350, 150), (475, 50), (650, 50), (750, 550), (1025, 150)]
 
 # STATE: variables that remember how things are going.
 leg = 0

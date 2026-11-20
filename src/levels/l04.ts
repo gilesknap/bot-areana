@@ -12,7 +12,7 @@ export const l04: LevelDef = {
     "loop do the legwork. Mind the lava pool on the way past.",
   lesson: {
     title: 'for loops & lists',
-    snippet: 'route = [(160, 100), (640, 100)]\nfor x, y in route:\n    print("heading for", x, y)',
+    snippet: 'route = [(200, 125), (800, 125)]\nfor x, y in route:\n    print("heading for", x, y)',
     blurb: 'A list holds many values. A for loop runs its block once for each of them.',
   },
   map: [
@@ -57,7 +57,7 @@ export const l04: LevelDef = {
   seed: 404,
   starter: `# A list keeps several values in order, inside square brackets.
 # Each checkpoint here is an (x, y) pair, in cm from the top-left corner.
-route = [(160, 100), (640, 100), (700, 460), (400, 280)]
+route = [(200, 125), (800, 125), (875, 575), (500, 350)]
 
 # A for loop runs the indented block once for every item in the list.
 for x, y in route:

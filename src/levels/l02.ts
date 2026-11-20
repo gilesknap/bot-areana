@@ -12,7 +12,7 @@ export const l02: LevelDef = {
     "the order of your lines is the order things happen.",
   lesson: {
     title: 'sequences & arguments',
-    snippet: 'bot.drive.forward(400)\nbot.drive.turn(-90)\nbot.drive.forward(240)',
+    snippet: 'bot.drive.forward(500)\nbot.drive.turn(-90)\nbot.drive.forward(300)',
     blurb: 'Lines run top to bottom. A positive turn goes right, a negative one goes left.',
   },
   map: [
@@ -45,15 +45,15 @@ export const l02: LevelDef = {
 #   bot.drive.turn(degrees)   positive turns right, negative turns left
 #
 # Lines run in order, top to bottom.
-# The first leg of the corridor is 400 cm long:
-bot.drive.forward(400)
+# The first leg of the corridor is 500 cm long:
+bot.drive.forward(500)
 
 # Now turn to face up the corridor... and keep going!
 `,
   hints: [
     'After the first leg the corridor goes up, which is to the LEFT of the way you are facing.',
-    'Turning left is a negative number: bot.drive.turn(-90). Each floor tile is 40 cm across.',
-    'forward(400), turn(-90), forward(240), turn(90), forward(160).',
+    'Turning left is a negative number: bot.drive.turn(-90). Each floor plate is 100 cm across.',
+    'forward(500), turn(-90), forward(300), turn(90), forward(200).',
   ],
   solution: { design: { chassis: 'chassis_s', drive: 'wheels', slots: {} }, script: 'solutions/l02.py' },
 };

@@ -10,7 +10,7 @@ test('level 1: brief, starter, hints, then a win', async ({ page }) => {
   await page.goto('./');
   await page.getByRole('button', { name: /^Level 1: First Steps/ }).click();
   const brief = page.getByRole('complementary', { name: 'Mission briefing' });
-  await expect(brief).toContainText('400 cm dead ahead');
+  await expect(brief).toContainText('500 cm dead ahead');
   await shot(page, 'novice-l01-1-brief');
 
   await page.goto('./#/level/l01/code');
@@ -35,7 +35,7 @@ test('level 1: brief, starter, hints, then a win', async ({ page }) => {
   }
   await expect(page.getByRole('button', { name: 'Hints 3/3' })).toBeVisible();
 
-  await setCode(page, 'bot.drive.forward(400)\n');
+  await setCode(page, 'bot.drive.forward(500)\n');
   await page.getByRole('button', { name: 'Run' }).click();
   const victory = page.getByRole('dialog', { name: 'Victory' });
   await expect(victory).toBeVisible({ timeout: 60_000 });

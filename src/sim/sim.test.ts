@@ -1,9 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { BotApiError } from '../shared/errors';
-import { TICK_RATE } from '../shared/geometry';
+import { TICK_RATE, toCm } from '../shared/geometry';
 import type { BotDesign } from '../shared/parts';
 import { createMatch } from './index';
 import { Harness, WHEELS_S, enemy, makeLevel } from './testkit';
+
+/** The Python API speaks cm: a world distance as the player would type or read it. */
+const cm = toCm;
 
 const SCOUT: BotDesign = {
   chassis: 'chassis_m',
@@ -110,14 +113,21 @@ describe('per-call tick costs', () => {
 });
 
 describe('driving', () => {
-  it('forward(100) moves exactly 100 cm along the heading and returns it', () => {
+  it('forward(500) moves 400 world units (500 cm) along the heading and returns 500', () => {
     const h = new Harness(makeLevel());
     const { x, y } = h.p;
-    const t0 = h.m.tick;
-    expect(h.call('drive', 'forward', 100, true)).toBe(100);
+    expect(h.call('drive', 'forward', 500, true)).toBe(500);
     expect(h.p.x).toBeCloseTo(x);
-    expect(h.p.y).toBeCloseTo(y - 100); // heading 0 is up, y grows down
-    // 140 cm/s top speed with a short acceleration: a bit under a second.
+    expect(h.p.y).toBeCloseTo(y - 400); // heading 0 is up, y grows down
+  });
+
+  it('forward(125) moves 100 units in a bit under a second', () => {
+    const h = new Harness(makeLevel());
+    const y = h.p.y;
+    const t0 = h.m.tick;
+    expect(h.call('drive', 'forward', 125, true)).toBe(125);
+    expect(h.p.y).toBeCloseTo(y - 100);
+    // 140 units/s (175 cm/s) top speed with a short acceleration: a bit under a second.
     expect(h.m.tick - t0).toBeGreaterThan(21);
     expect(h.m.tick - t0).toBeLessThan(30);
     expect(h.call('drive', 'is_moving')).toBe(false);
@@ -127,9 +137,9 @@ describe('driving', () => {
     const h = new Harness(makeLevel());
     const y = h.p.y;
     expect(h.call('drive', 'backward', 50, true)).toBe(50);
-    expect(h.p.y).toBeCloseTo(y + 50);
+    expect(h.p.y).toBeCloseTo(y + 40);
     expect(h.call('drive', 'forward', -50, true)).toBe(50);
-    expect(h.p.y).toBeCloseTo(y + 100);
+    expect(h.p.y).toBeCloseTo(y + 80);
   });
 
   it('turn(90) turns right at the drive turn rate; negative turns left', () => {
@@ -169,7 +179,7 @@ describe('driving', () => {
     const h = new Harness(level);
     const moved = h.call('drive', 'forward', 500, true) as number;
     // Wall bottom at y=80, radius 18: stops with centre at y=98.
-    expect(moved).toBeCloseTo(220 - 98, 0);
+    expect(moved).toBeCloseTo(cm(220 - 98), 0);
     expect(h.p.y).toBeCloseTo(98, 1);
     expect(h.m.tick).toBeLessThan(60);
   });
@@ -265,20 +275,21 @@ describe('terrain', () => {
 });
 
 describe('sensors', () => {
-  it('rangefinder measures from the bot edge to the nearest wall, 600 if nothing', () => {
+  it('rangefinder measures from the bot edge to the nearest wall, 750 cm if nothing', () => {
     const level = makeLevel({ map: ['.....', '#####', '.....', '.....', '.....'], spawn: { x: 100, y: 180, heading: 0 } }, 5, 5);
     const h = new Harness(level, { chassis: 'chassis_s', drive: 'wheels', slots: { front: 'rangefinder', rear: 'rangefinder' } });
-    expect(h.call('front_sensor', 'distance')).toBe(180 - 80 - 18);
-    expect(h.call('rear_sensor', 'distance')).toBe(200 - 180 - 18);
+    expect(h.call('front_sensor', 'distance')).toBe(cm(180 - 80 - 18));
+    expect(h.call('rear_sensor', 'distance')).toBe(cm(200 - 180 - 18));
     const open = new Harness(makeLevel({}, 40, 40), { chassis: 'chassis_s', drive: 'wheels', slots: { front: 'rangefinder' } });
-    expect(open.call('front_sensor', 'distance')).toBe(600);
-    expect(open.events('range')).toHaveLength(1);
+    expect(open.call('front_sensor', 'distance')).toBe(750);
+    // The beam event stays in world units, for the renderer.
+    expect(open.events('range')[0]).toMatchObject({ distance: 600 });
   });
 
   it('rangefinder sees bots', () => {
     const level = makeLevel({ enemies: [enemy('d', 'static', 600, 400)] });
     const h = new Harness(level, { chassis: 'chassis_s', drive: 'wheels', slots: { front: 'rangefinder' } });
-    expect(h.call('front_sensor', 'distance')).toBe(600 - 400 - 18 - 18);
+    expect(h.call('front_sensor', 'distance')).toBe(cm(600 - 400 - 18 - 18));
   });
 
   it('radar lists enemies and objectives nearest first with bearings', () => {
@@ -296,21 +307,28 @@ describe('sensors', () => {
     const e0 = h.p.energy;
     const scan = h.call('radar', 'scan') as Array<{ kind: string; bearing: number; distance: number }>;
     expect(scan.map((s) => s.kind)).toEqual(['core', 'turret', 'flag']);
-    expect(scan[0]).toMatchObject({ bearing: 0, distance: 80, x: 600, y: 520 });
-    expect(scan[1]).toMatchObject({ bearing: 90, distance: 100 });
+    expect(scan[0]).toMatchObject({ bearing: 0, distance: 100, x: 750, y: 650 });
+    expect(scan[1]).toMatchObject({ bearing: 90, distance: 125 });
     expect(scan[2]!.bearing).toBe(-90);
     expect(h.events('scan')).toHaveLength(1);
     expect(h.p.energy).toBeLessThan(e0);
   });
 
+  it('radar sees out to 600 cm (480 world units)', () => {
+    const level = makeLevel({ enemies: [enemy('in', 'static', 600, 120), enemy('out', 'static', 1081, 600)] });
+    const h = new Harness(level, { chassis: 'chassis_m', drive: 'wheels', slots: { front: 'radar' } });
+    expect(h.call('radar', 'scan')).toEqual([{ kind: 'bot', bearing: 0, distance: 600, x: 750, y: 150 }]);
+    expect(h.events('scan')[0]).toMatchObject({ range: 480 });
+  });
+
   it('gps reports position, heading, bearing_to and distance_to', () => {
     const h = new Harness(makeLevel(), { chassis: 'chassis_s', drive: 'wheels', slots: { front: 'gps' } });
-    expect(h.call('gps', 'position')).toEqual([600, 600]);
+    expect(h.call('gps', 'position')).toEqual([750, 750]);
     h.call('drive', 'turn', 90, true);
     expect(h.call('gps', 'heading')).toBe(90);
-    expect(h.call('gps', 'bearing_to', 600, 500)).toBe(-90);
-    expect(h.call('gps', 'distance_to', 600, 500)).toBe(100);
-    h.call('drive', 'turn', h.call('gps', 'bearing_to', 700, 700) as number, true);
+    expect(h.call('gps', 'bearing_to', 750, 625)).toBe(-90);
+    expect(h.call('gps', 'distance_to', 750, 625)).toBe(125);
+    h.call('drive', 'turn', h.call('gps', 'bearing_to', 875, 875) as number, true);
     expect(h.call('gps', 'heading')).toBe(135);
   });
 
@@ -463,12 +481,12 @@ describe('weapons, damage and energy', () => {
       enemies: [enemy('w', 'static', 600, 520, { design: { chassis: 'chassis_s', drive: 'wheels', slots: {} } })],
     });
     const tank = new Harness(level, { chassis: 'chassis_s', drive: 'tracks', slots: {} });
-    tank.call('drive', 'forward', 150, true);
+    tank.call('drive', 'forward', cm(150), true);
     expect(tank.bot('w').y).toBeLessThan(500);
     expect(tank.p.y).toBeCloseTo(450, 0);
     const car = new Harness(level);
-    const moved = car.call('drive', 'forward', 150, true) as number;
-    expect(moved).toBeLessThan(150);
+    const moved = car.call('drive', 'forward', cm(150), true) as number;
+    expect(moved).toBeLessThan(cm(150));
   });
 });
 
@@ -491,11 +509,11 @@ describe('objectives, time and stars', () => {
       objectives: [{ type: 'waypoints', id: 'w', label: 'W', points: [{ x: 600, y: 400 }, { x: 600, y: 500 }], radius: 25 }],
     });
     const h = new Harness(level);
-    h.call('drive', 'forward', 100, true); // passes point 2 first: does not count
+    h.call('drive', 'forward', cm(100), true); // passes point 2 first: does not count
     expect(h.events('marker')).toHaveLength(0);
-    h.call('drive', 'forward', 100, true);
+    h.call('drive', 'forward', cm(100), true);
     expect(h.events('marker').map((e) => e.markerId)).toEqual(['w.1']);
-    expect(h.call('drive', 'backward', 100, true)).toBe('MATCH_OVER');
+    expect(h.call('drive', 'backward', cm(100), true)).toBe('MATCH_OVER');
     expect(h.m.result().won).toBe(true);
   });
 
@@ -504,11 +522,11 @@ describe('objectives, time and stars', () => {
       objectives: [{ type: 'collect', id: 'c', label: 'C', items: [{ x: 600, y: 400 }, { x: 600, y: 700 }], radius: 25 }],
     });
     const h = new Harness(level, { chassis: 'chassis_m', drive: 'wheels', slots: { front: 'radar' } });
-    h.call('drive', 'forward', 200, true);
+    h.call('drive', 'forward', cm(200), true);
     expect((h.call('radar', 'scan') as unknown[]).length).toBe(1);
     const objEvents = h.events('objective').filter((e) => e.progress === 1);
     expect(objEvents).toHaveLength(1);
-    expect(h.call('drive', 'backward', 300, true)).toBe('MATCH_OVER');
+    expect(h.call('drive', 'backward', cm(300), true)).toBe('MATCH_OVER');
     expect(h.m.result().won).toBe(true);
   });
 

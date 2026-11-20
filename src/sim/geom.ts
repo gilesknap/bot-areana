@@ -1,4 +1,4 @@
-/** Collision and ray-casting helpers. Pure functions on cm coordinates. */
+/** Collision and ray-casting helpers. Pure functions on world-unit coordinates. */
 import type { Rect, Vec2 } from '../shared/geometry';
 import { normaliseBearing } from '../shared/geometry';
 import type { DirectionalSlot } from '../shared/parts';

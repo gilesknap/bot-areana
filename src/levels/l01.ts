@@ -9,10 +9,10 @@ export const l01: LevelDef = {
   brief:
     "Welcome to the proving grounds, recruit. Your bot has wheels, a hull and absolutely no " +
     "initiative: it does exactly what your code says and not a centimetre more. The flag is " +
-    "400 cm dead ahead. Tell the bot to go and get it.",
+    "500 cm dead ahead. Tell the bot to go and get it.",
   lesson: {
     title: 'calling functions',
-    snippet: 'bot.drive.forward(400)',
+    snippet: 'bot.drive.forward(500)',
     blurb: 'Call a function with brackets. The number inside says how far, in cm.',
   },
   map: [
@@ -45,14 +45,14 @@ export const l01: LevelDef = {
 # The number in the brackets is an argument:
 # how many cm to drive.
 #
-# The flag is 400 cm ahead, but this only goes
+# The flag is 500 cm ahead, but this only goes
 # part of the way. Change the number, then press Run.
 bot.drive.forward(100)
 `,
   hints: [
     'Press Run and watch how far the bot gets. Then change the number in the brackets.',
-    'Distances are in centimetres. The flag is 400 cm in front of the start pad.',
-    'One line does it: bot.drive.forward(400)',
+    'Distances are in centimetres, and each big floor plate is 100 cm. The flag is 500 cm in front of the start pad.',
+    'One line does it: bot.drive.forward(500)',
   ],
   solution: { design: { chassis: 'chassis_s', drive: 'wheels', slots: {} }, script: 'solutions/l01.py' },
 };

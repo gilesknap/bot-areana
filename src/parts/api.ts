@@ -5,14 +5,18 @@
  *  - CodeMirror autocomplete and the in-game API reference (src/ui),
  *  - the Workshop "YOUR PYTHON API" preview.
  *
- * Conventions (see src/shared/geometry.ts): distances in cm, angles in degrees, heading 0 = up,
- * clockwise positive; bearings are relative, positive = to the right.
+ * Conventions (see src/shared/geometry.ts): distances in cm (the sim converts from world units),
+ * angles in degrees, heading 0 = up, clockwise positive; bearings are relative, positive = right.
  * Every call except bot.log() costs at least one tick so `while` loops always let time pass.
  */
 import type { ApiMethod, ApiParam, PartApi } from '../shared/api';
 import type { BotDesign, PartId } from '../shared/parts';
 import { PARTS } from './catalogue';
 import { fittedApi } from './naming';
+import { toCm } from '../shared/geometry';
+
+const RANGEFINDER_CM = toCm(PARTS.rangefinder.sensor!.range);
+const RADAR_CM = toCm(PARTS.radar.sensor!.range);
 
 const WAIT: ApiParam = {
   name: 'wait',
@@ -125,7 +129,7 @@ const PART_APIS: Partial<Record<PartId, PartApi>> = {
         params: [],
         returns: 'float',
         summary: 'cm to the nearest wall or bot it points at.',
-        doc: 'Measures along the direction of the slot it is fitted to (front_sensor looks ahead, left_sensor looks left). Sees walls, bots and turrets, not floor hazards. Returns 600.0 if nothing is in range.',
+        doc: `Measures along the direction of the slot it is fitted to (front_sensor looks ahead, left_sensor looks left). Sees walls, bots and turrets, not floor hazards. Returns ${RANGEFINDER_CM}.0 if nothing is in range.`,
         ticks: 1,
         example: 'if bot.front_sensor.distance() < 50:\n    bot.drive.turn(90)',
       },
@@ -139,7 +143,7 @@ const PART_APIS: Partial<Record<PartId, PartApi>> = {
         name: 'scan',
         params: [],
         returns: 'list[ScanResult]',
-        summary: 'List what is within 500 cm, nearest first.',
+        summary: `List what is within ${RADAR_CM} cm, nearest first.`,
         doc: 'Returns a list of objects, nearest first. Each has .kind ("turret", "bot", "core", "flag" or "waypoint"), .bearing (degrees, + is right), .distance (cm), and .x / .y. Wrecks are not listed. An empty list is falsy, so `while bot.radar.scan():` loops while anything is visible.',
         ticks: 1,
         energy: 1,

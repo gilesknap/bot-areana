@@ -5,6 +5,7 @@
 import type { BotDesign, ChassisId, DesignIssue, PartId, SlotId, UnlockId } from '../shared/parts';
 import { CHASSIS, PARTS } from '../parts/catalogue';
 import { computeStats, validateDesign } from '../parts/stats';
+import { toCm } from '../shared/geometry';
 
 export type Mount = SlotId | 'drive';
 
@@ -73,7 +74,7 @@ export function meters(design: BotDesign, budget?: Budget): Meter[] {
       over: s.weight > weightLimit,
     },
     power,
-    { label: 'Top speed', value: `${(s.topSpeed / 100).toFixed(1)} m/s`, fill: s.topSpeed / 220, over: false },
+    { label: 'Top speed', value: `${Math.round(toCm(s.topSpeed))} cm/s`, fill: s.topSpeed / 220, over: false },
     { label: 'Hull', value: `${s.hp} HP`, fill: s.hp / 160, over: false },
   ].map((m) => ({ ...m, fill: Math.max(0, Math.min(1, m.fill)) }));
 }

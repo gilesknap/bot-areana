@@ -12,7 +12,7 @@ export const l03: LevelDef = {
     "so look before you leap and let your code make the call.",
   lesson: {
     title: 'if / else',
-    snippet: 'if bot.front_sensor.distance() > 300:\n    print("clear!")\nelse:\n    print("blocked")',
+    snippet: 'if bot.front_sensor.distance() > 400:\n    print("clear!")\nelse:\n    print("blocked")',
     blurb: 'Run one block of code or the other, depending on a comparison.',
   },
   map: [
@@ -35,7 +35,7 @@ export const l03: LevelDef = {
     options: [[{ x: 0, y: 200, w: 120, h: 40 }], [{ x: 480, y: 200, w: 120, h: 40 }]],
     count: 1,
   },
-  spawn: { x: 300, y: 440, heading: 0 },
+  spawn: { x: 300, y: 460, heading: 0 },
   objectives: [{ type: 'reach', id: 'flag', label: 'Reach the flag', target: { x: 300, y: 60 }, radius: 30 }],
   timeLimit: 45,
   enemies: [],
@@ -52,13 +52,13 @@ export const l03: LevelDef = {
 
 # Head over to the bottom of the left lane and look up it.
 bot.drive.turn(-90)
-bot.drive.forward(240)
+bot.drive.forward(300)
 bot.drive.turn(90)
 
 gap = bot.front_sensor.distance()
 print("Clear road ahead:", gap, "cm")
 
-if gap > 300:
+if gap > 400:
     print("Left lane is open!")
     # Drive up the lane, then turn right towards the flag.
 else:
@@ -66,9 +66,9 @@ else:
     # Turn right, cross over to the right lane and go up that one.
 `,
   hints: [
-    "An open lane reads about 420 cm; a blocked one under 200. That's why the starter compares with 300.",
-    'Each lane is 380 cm long, and the flag is 240 cm across from the top of either lane. The right lane is 480 cm to the right of the left one.',
-    'If blocked: turn(90), forward(480), turn(-90), forward(380), turn(-90), forward(240).',
+    "An open lane reads about 550 cm; a blocked one about 250. That's why the starter compares with 400.",
+    'Each lane is 500 cm long, and the flag is 300 cm across from the top of either lane. The right lane is 600 cm to the right of the left one.',
+    'If blocked: turn(90), forward(600), turn(-90), forward(500), turn(-90), forward(300).',
   ],
   solution: {
     design: { chassis: 'chassis_s', drive: 'wheels', slots: { front: 'rangefinder' } },

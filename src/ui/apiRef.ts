@@ -134,7 +134,7 @@ export function apiReference(design: BotDesign, onInsert?: (code: string) => voi
       'section.api-part',
       {},
       h('h3', {}, 'Units'),
-      h('p.muted', {}, `Distances are in cm (a floor tile is 40 cm). Angles are degrees: heading 0 is up, turning right is positive. A bearing is relative to where your bot faces, + to the right. ${TICK_RATE} ticks make one second.`),
+      h('p.muted', {}, `Distances are in cm: a floor plate is 1 m (100 cm) and a tile is 50 cm, so count the plates to measure. Angles are degrees: heading 0 is up, turning right is positive. A bearing is relative to where your bot faces, + to the right. ${TICK_RATE} ticks make one second.`),
     ),
   );
   return out;

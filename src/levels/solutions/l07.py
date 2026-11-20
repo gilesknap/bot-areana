@@ -11,8 +11,8 @@ while True:
         bot.wait(0.5)
     else:
         bot.drive.turn(enemy.bearing)
-        if enemy.distance > 300:
-            bot.drive.forward(60)
+        if enemy.distance > 400:
+            bot.drive.forward(75)
         elif bot.blaster.ready():
             bot.blaster.fire()
         bot.wait(0.2)

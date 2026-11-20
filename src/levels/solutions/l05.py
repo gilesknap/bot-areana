@@ -1,5 +1,5 @@
 # The middle turret can reach the start pad, so it goes first.
-turrets = [(440, 300), (160, 360), (260, 140), (620, 140), (720, 360)]
+turrets = [(550, 375), (200, 450), (325, 175), (775, 175), (900, 450)]
 
 for x, y in turrets:
     bot.drive.turn(bot.gps.bearing_to(x, y))
