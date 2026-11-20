@@ -416,6 +416,63 @@ describe('weapons, damage and energy', () => {
     expect(h.frames.at(-1)!.bots[1]!.alive).toBe(false);
   });
 
+  describe('survive with enemies', () => {
+    const level = makeLevel({
+      objectives: [{ type: 'survive', id: 's', label: 'S', seconds: 60 }],
+      enemies: [enemy('d', 'static', 600, 300)],
+    });
+
+    it('destroying every enemy completes it early, mid-script', () => {
+      const h = new Harness(level, shooter);
+      let r: unknown;
+      for (let i = 0; i < 5 && r !== 'MATCH_OVER'; i++) {
+        h.call('blaster', 'fire');
+        r = h.wait(1);
+      }
+      expect(r).toBe('MATCH_OVER');
+      expect(h.m.tick).toBeLessThan(10 * 30);
+      expect(h.m.result()).toMatchObject({ won: true, reason: 'objectives_complete', stars: 3 });
+      expect(h.events('objective').at(-1)).toMatchObject({ progress: 60, total: 60, done: true });
+    });
+
+    it('a kill landing after the script ended still ends it straight away', () => {
+      const h = new Harness(level, shooter);
+      h.bot('d').hp = 1;
+      h.call('blaster', 'fire');
+      h.finish();
+      expect(h.m.tick).toBeLessThan(2 * 30);
+      expect(h.m.result()).toMatchObject({ won: true, reason: 'objectives_complete' });
+    });
+
+    it('with an enemy left alive it still needs the full time', () => {
+      const h = new Harness(level, shooter);
+      h.finish();
+      expect(h.m.tick).toBe(60 * 30);
+      expect(h.m.result()).toMatchObject({ won: true, seconds: 60 });
+    });
+
+    it('killing only one of two enemies still needs the full time', () => {
+      const two = makeLevel({ ...level, enemies: [enemy('d', 'static', 600, 300), enemy('e', 'static', 200, 1000)] });
+      const h = new Harness(two, shooter);
+      h.bot('d').hp = 1;
+      h.call('blaster', 'fire');
+      h.finish();
+      expect(h.events('destroyed').map((e) => e.botId)).toEqual(['d']);
+      expect(h.m.tick).toBe(60 * TICK_RATE);
+      expect(h.m.result()).toMatchObject({ won: true, seconds: 60 });
+    });
+
+    it('a dormant (delayed) enemy killed before it wakes completes it early', () => {
+      const dormant = makeLevel({ ...level, enemies: [enemy('c', 'chase', 600, 300, { params: { delay: 1000 } })] });
+      const h = new Harness(dormant, shooter);
+      h.bot('c').hp = 1;
+      h.call('blaster', 'fire');
+      h.finish();
+      expect(h.m.tick).toBeLessThan(2 * TICK_RATE);
+      expect(h.m.result()).toMatchObject({ won: true, reason: 'objectives_complete' });
+    });
+  });
+
   it('armour halves damage on its side only; a shield removes 80% from any side', () => {
     const turret = (heading: number) =>
       makeLevel({ spawn: { x: 600, y: 600, heading }, enemies: [enemy('t', 'turret', 600, 400, { spawn: { x: 600, y: 400, heading: 180 } })] });
