@@ -58,6 +58,11 @@ jobs:
       matrix:
         browser: [chromium, firefox, webkit]
     name: e2e (${{ matrix.browser }})
+    # Browsers and their system libraries come preinstalled (installing WebKit's with apt took
+    # over 5 minutes). Keep the tag in step with @playwright/test in package.json.
+    container:
+      image: mcr.microsoft.com/playwright:v1.65.1-noble
+      options: --user 1001
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -65,7 +70,6 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npx playwright install --with-deps ${{ matrix.browser }}
       - name: Playwright e2e
         run: npm run test:e2e -- --project=${{ matrix.browser }}
       - uses: actions/upload-artifact@v4
