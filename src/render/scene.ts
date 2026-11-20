@@ -263,9 +263,10 @@ export class ArenaScene extends Phaser.Scene {
       // step finished at once doesn't run seconds of particles in one frame.
       fxDt = (Math.min(this.clock.time - before, 1) * 1000) / TICK_RATE;
     } else {
-      const moving = this.clock.moving;
+      // Effects move by the playback time that passed (a step stops at its tick mid-frame).
+      const before = this.clock.time;
       upd = this.clock.advance(delta);
-      fxDt = moving ? delta * this.clock.speed : 0;
+      fxDt = (Math.max(0, this.clock.time - before) * 1000) / TICK_RATE;
     }
     for (const frame of upd.reached) this.handleFrame(frame);
     const last = upd.reached[upd.reached.length - 1];

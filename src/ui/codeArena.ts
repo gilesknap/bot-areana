@@ -408,6 +408,7 @@ export function codeArenaScreen(state: AppState, ctx: LevelContext): Screen {
     }
     if (arena.moving) arena.pause();
     else arena.play();
+    setPlaying(arena.moving); // now, in case the scene is still building and sees no change
   });
   stepBtn.addEventListener('click', () => {
     if (phase === 'idle') return void startRun(true);
