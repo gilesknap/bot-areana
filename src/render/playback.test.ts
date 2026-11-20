@@ -154,6 +154,17 @@ describe('PlaybackClock', () => {
       expect(c.line).toBe(5);
     });
 
+    it('after the last line of a finished run, step plays to the end', () => {
+      const c = loaded();
+      c.finish();
+      for (let i = 0; i < 5; i++) stepFully(c);
+      expect(c.step().reached).toEqual([]);
+      expect(c.moving).toBe(true);
+      let ended = false;
+      while (c.moving) ended ||= c.advance(1000 / 30).ended;
+      expect([c.time, c.line, ended]).toEqual([11, 5, true]);
+    });
+
     it('playing keeps the cursor on the last line started by the shown tick', () => {
       const c = loaded();
       c.play();

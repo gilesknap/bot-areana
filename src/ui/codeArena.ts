@@ -155,7 +155,6 @@ export function codeArenaScreen(state: AppState, ctx: LevelContext): Screen {
 
   // ---- Run state ----
   let phase: Phase = 'idle';
-  let playing = false;
   let run: { cancel(): void } | null = null;
   let pendingError: ScriptError | null = null;
   let result: MatchResult | null = null;
@@ -168,8 +167,8 @@ export function codeArenaScreen(state: AppState, ctx: LevelContext): Screen {
     el.classList.toggle('is-running', p !== 'idle');
   }
 
+  /** The main button's look: Pause while playback moves (see arena.onMoving), else Run or Play. */
   function setPlaying(p: boolean) {
-    playing = p;
     playBtn.replaceChildren(icon(p ? 'pause' : 'play'));
     playBtn.setAttribute('aria-label', p ? 'Pause' : phase === 'idle' ? 'Run' : 'Play');
   }
@@ -248,14 +247,14 @@ export function codeArenaScreen(state: AppState, ctx: LevelContext): Screen {
           status.hidden = true;
           void arena.load(level, w);
           hud.load(level, w);
-          if (playing) arena.play();
-          else arena.pause();
+          if (startPaused) arena.pause();
+          else arena.play();
         },
         onFrames: (frames: Frame[], lines: LineRecord[]) => {
           arena.push(frames, lines);
           if (stepOnLines && lines.length) {
             stepOnLines = false;
-            if (!playing) arena.step();
+            if (!arena.moving) arena.step();
           }
         },
         onFatal: (message: string) => {
@@ -318,7 +317,6 @@ export function codeArenaScreen(state: AppState, ctx: LevelContext): Screen {
   arena.onTick((tick: number, frame: Frame) => {
     setReadout(tick);
     hud.tick(tick, frame);
-    if (pendingError && tick >= pendingError.tick) showError(pendingError);
   });
   arena.onEvent((e: SimEvent, tick: number) => {
     hud.event(e);
@@ -330,7 +328,15 @@ export function codeArenaScreen(state: AppState, ctx: LevelContext): Screen {
   arena.onMoving((moving: boolean) => {
     if (phase !== 'idle') setPlaying(moving);
   });
-  arena.onLine((line: number | null) => editor.showLine(phase === 'idle' ? null : line));
+  // The current line follows steps and pauses; while playing it stays put (at 4x it would flicker
+  // and pin the editor's scroll).
+  const showLine = () => editor.showLine(phase === 'idle' ? null : arena.line);
+  arena.onMoving((moving: boolean) => {
+    if (!moving) showLine();
+  });
+  arena.onLine(() => {
+    if (!arena.moving) showLine();
+  });
   arena.onEnd(() => {
     if (pendingError) showError(pendingError);
     setPlaying(false);
@@ -391,14 +397,12 @@ export function codeArenaScreen(state: AppState, ctx: LevelContext): Screen {
       return void startRun();
     }
     stepOnLines = false;
-    setPlaying(!playing);
-    if (playing) arena.play();
-    else arena.pause();
+    if (arena.moving) arena.pause();
+    else arena.play();
   });
   stepBtn.addEventListener('click', () => {
     if (phase === 'idle') return void startRun(true);
     stepOnLines = false;
-    setPlaying(false);
     arena.step(); // not pause() first: that would cancel a step still playing up to its line
   });
   resetBtn.addEventListener('click', () => reset());

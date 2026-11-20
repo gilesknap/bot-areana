@@ -249,15 +249,21 @@ One run at a time per worker; each run gets a fresh Python namespace. Messages f
 - `ArenaView` (Phaser): `constructor(parent)`, `load(level, world)`, `push(frames, lines?)`,
   `play()`, `pause()`, `step()`, `setSpeed(PlaybackSpeed)`, `reset()`, `destroy()`, and listeners
   `onTick(cb(tick, frame))`, `onEvent(cb(event, tick))` (fired as playback reaches each event),
-  `onLine(cb(line | null))` (the script line shown changed), `onEnd(cb)` (playback reached the
-  last frame of a finished run). `step()` moves to the next line record: at once if it starts at
-  the shown tick (lines that take no game time share a tick), else by playing at the current speed
-  until that tick and pausing there. A second `step()` meanwhile finishes it at once; `pause()`
-  stops it where it is, `play()` carries on playing. With no more lines (or none at all, as in
-  `render/demo.ts`) it steps one tick. Playback interpolates
-  between ticks for smooth motion. Also `finish()` (no more frames are coming for this run, so
-  `onEnd` may fire) and `rewind()` (replay from tick 0 keeping the frames), plus `playing`,
-  `speed`, `tick` and `bufferedTick` getters.
+  `onLine(cb(line | null))` (the script line shown changed), `onMoving(cb(moving))` (playback
+  started or stopped moving: playing, or a step playing up to its line; the UI's Play/Pause
+  button follows it), `onEnd(cb)` (playback reached the last frame of a finished run and every
+  line up to it, so the result never covers lines still to step through). `step()` moves to the
+  next line record: at once if it starts at the shown tick (lines that take no game time share a
+  tick), else by playing at the current speed until that tick and pausing there. After the last
+  line of a finished run the end of the run is the last step: it plays to the last frame. A second
+  `step()` meanwhile finishes it at once; `pause()` stops it where it is, `play()` carries on
+  playing. While frames are still streaming and no next line has arrived (or with no lines at
+  all, as in `render/demo.ts`) it steps one tick. Playback interpolates between ticks for smooth
+  motion. Also `finish()` (no more frames are coming for this run, so `onEnd` may fire) and
+  `rewind()` (replay from tick 0 keeping the frames), plus `playing`, `moving`, `line`, `speed`,
+  `tick` and `bufferedTick` getters. `PlaybackClock.ended` is true once the end has been signalled
+  (`play()` then replays from the start). The editor's current line follows steps and pauses, not
+  normal play. A script error shows when playback ends (an error ends the match).
 - Look must match `Arena.dc.html` "test hall": steel floor plates with rivets, painted hazard
   border and centre ring, level label (`LevelDef.label`) as a faint giant stencil, START hex pad,
   concrete walls with hazard-stripe ends and drop shadows, glowing lava, water, pits, rough

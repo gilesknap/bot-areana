@@ -20,6 +20,9 @@ test('step highlights the current line and moves to the next one', async ({ page
   // The first step starts the run paused and lands on line 1 once the worker sends it.
   await step.click();
   await expect(current).toHaveText('x = 3', { timeout: 15_000 });
+  // Wait for the whole run (every frame and line) before stepping on, so no step falls back to a
+  // tick for lines still on their way.
+  await expect(page.locator('.arena-host[data-finished]')).toBeAttached({ timeout: 15_000 });
   const start = await shownTick(page);
   expect(start).toBe(0);
 

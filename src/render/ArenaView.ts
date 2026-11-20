@@ -86,6 +86,7 @@ export class ArenaView {
   load(level: LevelDef, world: WorldInit): Promise<void> {
     const seq = ++this.loadSeq;
     this.clock.clear();
+    delete this.parent.dataset.finished;
     return this.booted.then(async () => {
       if (seq !== this.loadSeq) return;
       await this.scene.build(level, world);
@@ -101,6 +102,7 @@ export class ArenaView {
   /** The match is over and every frame has been pushed. */
   finish(): void {
     this.clock.finish();
+    this.parent.dataset.finished = ''; // e2e tests wait for the whole run
   }
 
   play(): void {
@@ -116,10 +118,10 @@ export class ArenaView {
 
   /**
    * Pause and move to the next line of the script, playing up to it at the current speed if it
-   * starts later (a second step finishes that at once); one tick if there is no next line.
+   * starts later (a second step finishes that at once). After the last line of a finished run it
+   * plays to the end; while streaming with no next line yet, one tick.
    */
   step(): void {
-    this.clock.playing = false;
     this.scene.requestStep();
   }
 
@@ -134,12 +136,23 @@ export class ArenaView {
 
   /** Discard the run and show the level at its start (ready for the next run). */
   reset(): void {
-    this.clock.playing = false;
+    this.clock.pause();
+    delete this.parent.dataset.finished;
     this.scene.clearRun();
   }
 
   get playing(): boolean {
     return this.clock.playing;
+  }
+
+  /** Playing, or a step playing up to its line. */
+  get moving(): boolean {
+    return this.clock.moving;
+  }
+
+  /** Line of the script at the shown tick (null: none). */
+  get line(): number | null {
+    return this.clock.line;
   }
 
   get speed(): PlaybackSpeed {

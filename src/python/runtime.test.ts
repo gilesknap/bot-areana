@@ -106,6 +106,13 @@ describe('python runtime (real Pyodide, test sim)', () => {
     expect(atStart.at(-1)!.line).toBe(3);
   });
 
+  it('records every line again after the call that follows a capped loop', async () => {
+    const r = await run('for i in range(300):\n    x = i\nbot.wait(1)\nfor i in range(3):\n    y = i\nbot.wait(1)');
+    const after = r.lines.filter((l) => l.tick === 30).map((l) => l.line);
+    expect(after.filter((l) => l === 5)).toHaveLength(3);
+    expect(after.at(-1)).toBe(6);
+  });
+
   it('ends on the line that raised, even past the cap', async () => {
     const r = await run('for i in range(200):\n    a = i\n    b = 10 / (150 - i)');
     expect(r.error?.line).toBe(3);

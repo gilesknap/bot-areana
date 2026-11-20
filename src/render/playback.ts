@@ -7,7 +7,8 @@
  *
  * Beside the frames, a line cursor over the script's LineRecords (frame index = tick): playing
  * keeps it on the last line started by the shown tick. step() moves it to the next line: at once if
- * that line starts at the same tick, else by playing (at the current speed) up to its tick.
+ * that line starts at the same tick, else by playing (at the current speed) up to its tick. After
+ * the last line of a finished run, the end of the run is the last step.
  */
 import type { Frame, LineRecord } from '../shared/frames';
 import { TICK_RATE } from '../shared/geometry';
@@ -25,8 +26,8 @@ export class PlaybackClock {
   readonly lines: LineRecord[] = [];
   /** Index into `lines` of the current line, -1 before the first. */
   lineIndex = -1;
-  /** While a step plays up to a later line: that line's index in `lines`. Cleared by play/pause. */
-  stepTo: number | null = null;
+  /** A step is playing up to the next line (or the end of the run). Cleared by play/pause. */
+  stepping = false;
   time = 0;
   speed: PlaybackSpeed = 1;
   playing = false;
@@ -51,7 +52,7 @@ export class PlaybackClock {
 
   /** Time is moving: playing, or a step playing up to its line. */
   get moving(): boolean {
-    return this.playing || this.stepTo !== null;
+    return this.playing || this.stepping;
   }
 
   get atEnd(): boolean {
@@ -64,14 +65,14 @@ export class PlaybackClock {
   }
 
   play(): void {
-    this.stepTo = null;
+    this.stepping = false;
     this.playing = true;
   }
 
   /** Stop where it is, including a step playing up to its line. */
   pause(): void {
     this.playing = false;
-    this.stepTo = null;
+    this.stepping = false;
   }
 
   push(frames: readonly Frame[], lines: readonly LineRecord[] = []): void {
@@ -95,7 +96,7 @@ export class PlaybackClock {
   rewind(): void {
     this.time = 0;
     this.lineIndex = -1;
-    this.stepTo = null;
+    this.stepping = false;
     this.emitted = -1;
     this.endSignalled = false;
   }
@@ -104,11 +105,11 @@ export class PlaybackClock {
   advance(dtMs: number): PlaybackUpdate {
     if (this.moving && this.frames.length > 0) {
       this.time = Math.min(this.time + (dtMs / 1000) * TICK_RATE * this.speed, this.lastIndex);
-      if (this.stepTo !== null) {
-        const tick = this.lines[this.stepTo]!.tick;
+      if (this.stepping) {
+        const tick = this.nextTick()!;
         if (this.time >= tick) {
-          this.time = tick; // stop at the line's tick, not past it
-          this.arrive(this.stepTo);
+          this.time = tick; // stop at the step's tick, not past it
+          this.arrive();
         }
       } else {
         while (this.lineIndex + 1 < this.lines.length && this.lines[this.lineIndex + 1]!.tick <= this.index) this.lineIndex++;
@@ -120,31 +121,41 @@ export class PlaybackClock {
   /**
    * Pause and move to the next line of the script: at once if it starts at the shown tick, else
    * play up to the tick it starts at (see advance). Stepping again while a step plays finishes it
-   * at once. With no next line received (the script has ended, or no line records) step one tick.
+   * at once. After the last line of a finished run the step plays to its end; while frames are
+   * still streaming with no next line received yet (or with no line records at all) step one tick.
    */
   step(): PlaybackUpdate {
     this.playing = false;
-    if (this.stepTo !== null) {
-      this.arrive(this.stepTo);
-      return this.collect();
+    if (!this.stepping) {
+      // Lines for earlier ticks that arrived after a one-tick step (at the streaming frontier) are past.
+      while (this.lineIndex + 1 < this.lines.length && this.lines[this.lineIndex + 1]!.tick < this.index) this.lineIndex++;
+      const tick = this.nextTick();
+      if (tick === null) {
+        if (this.frames.length > 0) this.time = Math.min(this.index + 1, this.lastIndex);
+        return this.collect();
+      }
+      if (tick > this.index) {
+        this.stepping = true;
+        return this.collect();
+      }
     }
-    // Lines for earlier ticks that arrived after a one-tick step (at the streaming frontier) are past.
-    while (this.lineIndex + 1 < this.lines.length && this.lines[this.lineIndex + 1]!.tick < this.index) this.lineIndex++;
-    const next = this.lines[this.lineIndex + 1];
-    if (next && next.tick <= this.lastIndex) {
-      if (next.tick <= this.index) this.arrive(this.lineIndex + 1);
-      else this.stepTo = this.lineIndex + 1;
-    } else if (this.frames.length > 0) {
-      this.time = Math.min(this.index + 1, this.lastIndex);
-    }
+    this.arrive();
     return this.collect();
   }
 
-  /** A step reached its line: show that line at its tick (whole ticks), paused. */
-  private arrive(index: number): void {
-    this.stepTo = null;
-    this.lineIndex = index;
-    this.time = Math.max(this.index, this.lines[index]!.tick);
+  /** Tick of the next step's target: the next line, else the end of a finished run, else null. */
+  private nextTick(): number | null {
+    const next = this.lines[this.lineIndex + 1];
+    if (next && next.tick <= this.lastIndex) return next.tick;
+    return this.finished && this.frames.length > 0 ? this.lastIndex : null;
+  }
+
+  /** A step reached its target: show the next line (or the last frame) at its tick, paused. */
+  private arrive(): void {
+    const tick = this.nextTick()!;
+    this.stepping = false;
+    if (this.lines[this.lineIndex + 1]?.tick === tick) this.lineIndex++;
+    this.time = Math.max(this.index, tick);
   }
 
   private collect(): PlaybackUpdate {

@@ -463,11 +463,16 @@ def run_player(bridge, bot_source, script, seed, watchdog_seconds):
         for console in consoles:
             console.close_line()
         _restore_modules(_PRISTINE)
-    # Lines after the last bot call start at the final tick. Past the cap the last one may be stale,
-    # so end on the line that raised.
+    # Lines after the last bot call start at the final tick. They end on the line that raised: past
+    # the cap the last slot may be stale, so it takes that line.
+    muted = _muted
     lines = _take_lines()
-    if lines and status.get('line'):
-        lines[-1] = status['line']
+    line = status.get('line')
+    if lines and line and lines[-1] != line:
+        if muted:
+            lines[-1] = line
+        else:
+            lines.append(line)
     status['lines'] = lines
     return _dumps(status)
 
