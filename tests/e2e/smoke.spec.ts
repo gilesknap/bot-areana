@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 import { setCode, shot, watchBrowser } from './helpers';
 
 // Smoke: campaign -> Workshop (fit wheels) -> Code & Arena -> run level 1 at 4x -> victory -> level 2 opens.
@@ -66,7 +66,11 @@ test('the Code & Arena screen responds while Python boots', async ({ page }) => 
   await page.goto('./#/level/l01/code');
   const tour = page.getByRole('dialog', { name: 'Guided tour' });
   await expect(tour).toBeVisible();
-  await expect(page.getByRole('status').filter({ hasText: 'PYTHON' })).toHaveText('PYTHON BOOTING…');
+  // Drawing the arena the first time is a one-off cost (seconds on WebKit in CI, uploading the
+  // hall textures): let it pass, then check the page keeps up while Python is still loading.
+  await expect(page.locator('.arena-host[data-drawn]')).toBeAttached({ timeout: 15_000 });
+  await expect.poll(() => frameTime(page), { timeout: 15_000 }).toBeLessThan(100);
+  await expect(page.getByRole('status').filter({ hasText: 'PYTHON' })).toHaveText('PYTHON BOOTING…', quick);
 
   await tour.getByRole('button', { name: 'Next →' }).click(quick);
   await expect(tour).toContainText('Every command your fitted parts give you', quick);
@@ -81,3 +85,11 @@ test('the Code & Arena screen responds while Python boots', async ({ page }) => 
   await expect(page.getByRole('complementary', { name: 'Mission briefing' })).toContainText('400 cm dead ahead', quick);
   expect(errors).toEqual([]);
 });
+
+/** Milliseconds the page takes to reach its next animation frame. */
+function frameTime(page: Page): Promise<number> {
+  return page.evaluate(() => new Promise<number>((resolve) => {
+    const start = performance.now();
+    requestAnimationFrame(() => resolve(performance.now() - start));
+  }));
+}

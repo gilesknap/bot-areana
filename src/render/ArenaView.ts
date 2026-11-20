@@ -42,7 +42,7 @@ export class ArenaView {
   private booted: Promise<void>;
   private loadSeq = 0;
 
-  constructor(parent: HTMLElement) {
+  constructor(private readonly parent: HTMLElement) {
     this.scene = new ArenaScene();
     this.scene.lowPower = softwareWebGL();
     this.booted = new Promise((resolve) => (this.scene.onBoot = resolve));
@@ -83,7 +83,11 @@ export class ArenaView {
   load(level: LevelDef, world: WorldInit): Promise<void> {
     const seq = ++this.loadSeq;
     this.clock.clear();
-    return this.booted.then(() => (seq === this.loadSeq ? this.scene.build(level, world) : undefined));
+    return this.booted.then(async () => {
+      if (seq !== this.loadSeq) return;
+      await this.scene.build(level, world);
+      this.parent.dataset.drawn = ''; // e2e tests wait for the first hall
+    });
   }
 
   /** Append frames from the running match (in tick order). */
