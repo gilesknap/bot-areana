@@ -5,7 +5,7 @@
 import Phaser from 'phaser';
 import { CHASSIS, PARTS } from '../parts/catalogue';
 import type { BotFrame, Frame, ProjectileFrame, SimEvent, Team, WorldInit } from '../shared/frames';
-import { distance, headingTo, headingVector, normaliseBearing, TICK_RATE } from '../shared/geometry';
+import { distance, headingTo, headingVector, normaliseBearing, TICK_RATE, toCm } from '../shared/geometry';
 import type { LevelDef } from '../shared/level';
 import { PALETTE } from '../shared/palette';
 import { SLOT_ANGLE } from '../shared/parts';
@@ -1141,7 +1141,7 @@ export class ArenaScene extends Phaser.Scene {
     lock.text
       .setVisible(true)
       .setPosition(x, y - s - 6)
-      .setText(`LOCK ${Math.round(target.dist)}cm`)
+      .setText(`LOCK ${Math.round(toCm(target.dist))}cm`)
       .setAlpha(lock.t);
   }
 }

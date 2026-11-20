@@ -79,7 +79,7 @@ describe('budget validation', () => {
     const [weight, power, speed, hull] = meters(d, budget);
     expect(weight).toMatchObject({ value: '31 / 40 kg', over: false });
     expect(power).toMatchObject({ value: '5 / 8 W', over: false });
-    expect(speed!.value).toBe('1.4 m/s');
+    expect(speed!.value).toBe('169 cm/s'); // 175 cm/s, slowed by 31 kg over the 30 kg wheels rating
     expect(hull!.value).toBe('100 HP');
   });
 });

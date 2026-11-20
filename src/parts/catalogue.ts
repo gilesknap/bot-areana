@@ -79,6 +79,11 @@ export const CHASSIS: Readonly<Record<ChassisId, ChassisDef>> = {
   },
 };
 
+/**
+ * Distances and speeds here are world units (see src/shared/geometry.ts); the player sees them
+ * x CM_PER_UNIT in cm: wheels 175 cm/s, tracks 110, hover 275, rangefinder 750 cm, radar 600,
+ * blaster 900, bolts 750 cm/s.
+ */
 export const PARTS: Readonly<Record<PartId, PartDef>> = {
   // ---- Locomotion (BotDesign.drive) ----
   wheels: {
@@ -111,7 +116,7 @@ export const PARTS: Readonly<Record<PartId, PartDef>> = {
     slots: [],
     unique: true,
     drive: {
-      topSpeed: 90,
+      topSpeed: 88,
       turnRate: 120,
       refMass: 60,
       accel: 300,
@@ -184,7 +189,7 @@ export const PARTS: Readonly<Record<PartId, PartDef>> = {
     blurb: 'Sweeps all around and lists what it finds.',
     slots: ['front', 'rear', 'left', 'right'],
     unique: true,
-    sensor: { range: 500, energyPerRead: 1 },
+    sensor: { range: 480, energyPerRead: 1 },
   },
   gps: {
     id: 'gps',
@@ -219,7 +224,7 @@ export const PARTS: Readonly<Record<PartId, PartDef>> = {
     blurb: 'Fires an energy bolt. Needs a moment to cool down between shots.',
     slots: ['front', 'rear'],
     unique: true,
-    blaster: { damage: 20, cooldown: 1, energyPerShot: 5, projectileSpeed: 600, range: 700 },
+    blaster: { damage: 20, cooldown: 1, energyPerShot: 5, projectileSpeed: 600, range: 720 },
   },
   ram: {
     id: 'ram',

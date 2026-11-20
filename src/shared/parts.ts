@@ -53,13 +53,13 @@ export interface TerrainEffect {
 }
 
 export interface DriveStats {
-  /** cm/s on floor at or below refMass. */
+  /** World units/s on floor at or below refMass. */
   topSpeed: number;
   /** degrees/s when turning on the spot. */
   turnRate: number;
   /** Total bot mass (kg) the drive moves at full speed; heavier bots are slower. */
   refMass: number;
-  /** cm/s^2 */
+  /** World units/s^2 */
   accel: number;
   /** 0 = stops dead, close to 1 = keeps sliding (hover momentum). */
   drift: number;
@@ -71,7 +71,7 @@ export interface DriveStats {
 }
 
 export interface SensorStats {
-  /** Max range in cm (rangefinder returns this if nothing is in range). */
+  /** Max range in world units (the rangefinder reads this, in cm, if nothing is in range). */
   range: number;
   /** Energy per read. */
   energyPerRead: number;
@@ -82,9 +82,9 @@ export interface BlasterStats {
   /** seconds between shots */
   cooldown: number;
   energyPerShot: number;
-  /** cm/s */
+  /** World units/s */
   projectileSpeed: number;
-  /** cm before the bolt fizzles */
+  /** World units before the bolt fizzles */
   range: number;
 }
 
@@ -142,7 +142,7 @@ export interface ChassisDef {
   id: ChassisId;
   name: string;
   size: 'S' | 'M' | 'L' | 'turret';
-  /** Collision circle radius, cm. */
+  /** Collision circle radius, world units. */
   radius: number;
   /** kg (counts toward total weight) */
   weight: number;
@@ -169,7 +169,7 @@ export interface BotStats {
   weight: number;
   maxWeight: number;
   power: number;
-  /** cm/s on floor after weight penalty */
+  /** World units/s on floor after weight penalty */
   topSpeed: number;
   turnRate: number;
   hp: number;

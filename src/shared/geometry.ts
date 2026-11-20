@@ -1,8 +1,11 @@
 /**
  * World units and conventions shared by every module.
  *
- * - Distances are centimetres ("cm"). One floor tile is TILE_SIZE cm. The renderer draws
- *   1 cm = 1 px at scale 1 and scales the whole arena to fit.
+ * - The sim works in world units: one floor tile is TILE_SIZE units, and the renderer draws
+ *   1 unit = 1 px at scale 1, scaling the whole arena to fit.
+ * - The player sees centimetres: every distance, position and speed crossing the Python API (and
+ *   every part stat or level text shown to the player) is in cm, CM_PER_UNIT cm per world unit. A
+ *   floor plate (2x2 tiles) is 100 cm, so a tile is 50 cm. Convert only at that boundary.
  * - Origin is the top-left corner of the arena; x grows right, y grows DOWN (screen style).
  * - Heading: degrees, 0 = up ("north"), clockwise positive, normalised to [0, 360).
  * - Bearing: an angle relative to a bot's facing, (-180, 180], positive = to the right.
@@ -13,13 +16,25 @@
 export const TICK_RATE = 30;
 export const TICK_SECONDS = 1 / TICK_RATE;
 export const TILE_SIZE = 40;
+/** Centimetres the player sees per world unit (a floor plate of 2 tiles = 80 units = 100 cm). */
+export const CM_PER_UNIT = 1.25;
+
+/** World units to the cm the player sees. */
+export function toCm(units: number): number {
+  return units * CM_PER_UNIT;
+}
+
+/** cm from the player to world units. */
+export function fromCm(cm: number): number {
+  return cm / CM_PER_UNIT;
+}
 
 export interface Vec2 {
   x: number;
   y: number;
 }
 
-/** Axis-aligned rectangle, top-left corner plus size, in cm. */
+/** Axis-aligned rectangle, top-left corner plus size, in world units. */
 export interface Rect {
   x: number;
   y: number;
