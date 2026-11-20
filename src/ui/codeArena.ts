@@ -160,6 +160,9 @@ export function codeArenaScreen(state: AppState, ctx: LevelContext): Screen {
   let result: MatchResult | null = null;
   /** Step started the run: step onto line 1 as soon as the first lines arrive. */
   let stepOnLines = false;
+  /** Until the match starts (Python may still be booting), the buttons set what happens then. */
+  let started = false;
+  let playOnStart = false;
 
   function setPhase(p: Phase) {
     phase = p;
@@ -220,6 +223,9 @@ export function codeArenaScreen(state: AppState, ctx: LevelContext): Screen {
     state.flush();
     reset(false);
     stepOnLines = startPaused;
+    playOnStart = !startPaused;
+    started = false;
+    delete arenaHost.dataset.finished; // set again when this run's frames are all in
     consoleOut.replaceChildren();
     setPhase('running');
     setPlaying(!startPaused);
@@ -236,7 +242,6 @@ export function codeArenaScreen(state: AppState, ctx: LevelContext): Screen {
       return;
     }
     if (phase !== 'running') return; // reset while loading
-    let started = false;
     const runSeed = nextSeed();
     seedUsed = true;
     run = runner.run(
@@ -247,8 +252,8 @@ export function codeArenaScreen(state: AppState, ctx: LevelContext): Screen {
           status.hidden = true;
           void arena.load(level, w);
           hud.load(level, w);
-          if (startPaused) arena.pause();
-          else arena.play();
+          if (playOnStart) arena.play();
+          else arena.pause();
         },
         onFrames: (frames: Frame[], lines: LineRecord[]) => {
           arena.push(frames, lines);
@@ -397,11 +402,20 @@ export function codeArenaScreen(state: AppState, ctx: LevelContext): Screen {
       return void startRun();
     }
     stepOnLines = false;
+    if (!started) {
+      playOnStart = !playOnStart;
+      return setPlaying(playOnStart);
+    }
     if (arena.moving) arena.pause();
     else arena.play();
   });
   stepBtn.addEventListener('click', () => {
     if (phase === 'idle') return void startRun(true);
+    if (!started) {
+      playOnStart = false;
+      stepOnLines = true;
+      return setPlaying(false);
+    }
     stepOnLines = false;
     arena.step(); // not pause() first: that would cancel a step still playing up to its line
   });
