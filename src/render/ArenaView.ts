@@ -19,14 +19,17 @@ type Unsubscribe = () => void;
 
 let software: boolean | undefined;
 /**
- * True when WebGL has no GPU behind it (software rendering, as in CI or on a blocklisted GPU).
- * The browser then reads every WebGL frame back on the main thread, so a hall animating while
- * idle keeps the whole page busy (measured in CI: ~140 ms per frame, the page stalled for seconds).
+ * True when WebGL has no GPU behind it (software rendering, as in headless CI or on a
+ * blocklisted GPU). The browser then composites in software and reads every WebGL frame back
+ * on the main thread, so a hall animating while idle keeps the whole page busy (measured in CI:
+ * ~140 ms per frame, so clicks and typing waited seconds).
  */
 function softwareWebGL(): boolean {
   if (software === undefined) {
-    const gl = document.createElement('canvas').getContext('webgl', { failIfMajorPerformanceCaveat: true });
-    software = !gl;
+    const gl = document.createElement('canvas').getContext('webgl');
+    const info = gl?.getExtension('WEBGL_debug_renderer_info');
+    const renderer = info ? String(gl!.getParameter(info.UNMASKED_RENDERER_WEBGL)) : '';
+    software = /swiftshader|llvmpipe|softpipe|software/i.test(renderer);
     gl?.getExtension('WEBGL_lose_context')?.loseContext();
   }
   return software;

@@ -33,7 +33,10 @@ async function report(page: Page, label: string) {
       .getEntriesByType('resource')
       .filter((e) => /pyodide|phaser|codeArena|worker/.test(e.name))
       .map((e) => ({ n: e.name.split('/').pop(), s: Math.round(e.startTime), e: Math.round((e as PerformanceResourceTiming).responseEnd) }));
-    return { lag: w.__lag, lt: w.__lt, res };
+    const gl = document.createElement('canvas').getContext('webgl');
+    const info = gl?.getExtension('WEBGL_debug_renderer_info');
+    const renderer = info ? String(gl!.getParameter(info.UNMASKED_RENDERER_WEBGL)) : 'n/a';
+    return { renderer, lag: w.__lag, lt: w.__lt, res };
   });
   console.log(`DIAG ${label} ${JSON.stringify(data)}`);
 }
