@@ -66,8 +66,13 @@ The Code & Arena screen (`ui/codeArena.ts`) is loaded with a dynamic `import()` 
 
 ## Conventions (src/shared/geometry.ts)
 
-- Distance unit is the **cm**. A floor tile is `TILE_SIZE` = 40 cm. The renderer draws 1 cm = 1 px
-  at scale 1 and fits the whole arena into its panel. A 22 x 19 tile map is 880 x 760.
+- The sim works in **world units**. A floor tile is `TILE_SIZE` = 40 units. The renderer draws
+  1 unit = 1 px at scale 1 and fits the whole arena into its panel. A 22 x 19 tile map is 880 x 760.
+- The player sees **cm**: `CM_PER_UNIT` = 1.25, so a floor plate (2 x 2 tiles, 80 units) is 100 cm
+  and a tile is 50 cm. Only `Match.call` (the Python API boundary) converts, with `toCm`/`fromCm`:
+  drive distances, rangefinder readings, radar `.distance`/`.x`/`.y` and gps positions are cm. Part
+  stats shown to the player (Workshop meters, API docs) and level text are cm too; level data,
+  part stats in the catalogue and frames stay in world units.
 - Origin top-left, x right, **y down**.
 - **Heading**: degrees, 0 = up, clockwise, [0, 360). **Bearing**: relative to the bot's facing,
   (-180, 180], positive = right, so `bot.drive.turn(t.bearing)` faces `t`.

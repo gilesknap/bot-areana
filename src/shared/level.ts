@@ -21,9 +21,9 @@ export type BehaviourId = 'static' | 'patrol' | 'chase' | 'turret' | 'kamikaze' 
 export interface BehaviourParams {
   /** patrol: loop of points to visit. */
   route?: Vec2[];
-  /** Notices the player within this many cm (default per behaviour). */
+  /** Notices the player within this many world units (default per behaviour). */
   sightRange?: number;
-  /** Opens fire within this many cm. */
+  /** Opens fire within this many world units. */
   fireRange?: number;
   /** coward: flee once hp falls below this fraction (0..1). */
   fleeBelow?: number;
@@ -73,7 +73,7 @@ export interface LevelDef {
   lesson: { title: string; snippet: string; blurb: string };
   /** Map rows (see TILE_CHARS); arena size = columns x rows tiles. */
   map: string[];
-  /** Extra free-placed walls (cm), on top of '#' tiles. */
+  /** Extra free-placed walls (world units), on top of '#' tiles. */
   walls?: Rect[];
   /** Seeded variation: the sim picks `count` of the option groups using the run's seed. */
   randomWalls?: { options: Rect[][]; count: number };

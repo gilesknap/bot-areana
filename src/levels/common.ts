@@ -3,7 +3,7 @@ import type { Vec2 } from '../shared/geometry';
 import { TILE_SIZE } from '../shared/geometry';
 import type { BotDesign } from '../shared/parts';
 
-/** Centre of map tile (col, row) in cm. */
+/** Centre of map tile (col, row) in world units. */
 export function tile(col: number, row: number): Vec2 {
   return { x: (col + 0.5) * TILE_SIZE, y: (row + 0.5) * TILE_SIZE };
 }

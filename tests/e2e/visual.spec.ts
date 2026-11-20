@@ -132,6 +132,9 @@ test('first-run tours, Python status and the API drawer', async ({ page }) => {
   // API reference: click-to-insert an example into the script.
   await page.getByRole('button', { name: 'API' }).click();
   await shot(page, 'api-drawer');
+  const units = page.getByRole('region', { name: 'API reference' }).getByText('a floor plate is 1 m (100 cm)');
+  await units.scrollIntoViewIfNeeded();
+  await shot(page, 'api-drawer-units');
   await page.getByRole('button', { name: 'Insert example: bot.drive.turn' }).click();
   // The drawer closes and the example lands at the end of the script, not in the starter's comments.
   await expect(page.getByRole('region', { name: 'API reference' })).toBeHidden();

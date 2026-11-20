@@ -82,7 +82,7 @@ test('the Code & Arena screen responds while Python boots', async ({ page }) => 
 
   await page.getByRole('link', { name: 'BOT ARENA' }).click(quick);
   await page.getByRole('button', { name: /^Level 1: First Steps/ }).click(quick);
-  await expect(page.getByRole('complementary', { name: 'Mission briefing' })).toContainText('400 cm dead ahead', quick);
+  await expect(page.getByRole('complementary', { name: 'Mission briefing' })).toContainText('500 cm dead ahead', quick);
   expect(errors).toEqual([]);
 });
 
