@@ -50,7 +50,8 @@ Pyodide from the jsDelivr CDN, so the game needs a network connection on first l
 Playwright needs its browsers: `npx playwright install --with-deps chromium firefox webkit` (or run
 one with `npm run test:e2e -- --project=chromium`). `npm run test:e2e` saves a picture of each screen
 to `test-results/screens/<browser>/` (CI uploads them in the `playwright-report-<browser>` artifacts);
-copy them from there to `docs/screenshots/` to refresh the docs.
+copy them from there to `docs/screenshots/` to refresh the docs. `tests/e2e/visual.spec.ts` also renders
+the mockups in `docs/visual/` (`mockup-*.png`) beside the matching game screens (`game-*.png`).
 
 Docs:
 

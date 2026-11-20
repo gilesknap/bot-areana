@@ -325,10 +325,10 @@ function drawTerrain(ctx: Ctx, grid: TerrainGrid, rand: () => number, scale: num
     ctx.fill(lava);
     // Hot spots away from the edges, at irregular places so the pool doesn't look tiled.
     for (const t of tiles) {
-      if (rand() < 0.45) continue;
-      const cx = t.x + T * (0.2 + rand() * 0.6);
-      const cy = t.y + T * (0.2 + rand() * 0.6);
-      const r = T * (0.5 + rand() * 0.6);
+      if (rand() < 0.6) continue;
+      const cx = t.x + T * (0.25 + rand() * 0.5);
+      const cy = t.y + T * (0.25 + rand() * 0.5);
+      const r = T * (0.35 + rand() * 0.4);
       const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
       g.addColorStop(0, 'rgba(255,241,194,0.95)');
       g.addColorStop(0.35, 'rgba(255,226,154,0.7)');
@@ -342,13 +342,10 @@ function drawTerrain(ctx: Ctx, grid: TerrainGrid, rand: () => number, scale: num
     for (let r = -1; r <= grid.rows; r++)
       for (let c = -1; c <= grid.cols; c++)
         if (grid.at(c, r) !== 'lava') shore.rect(c * T, r * T, T, T);
-    ctx.filter = `blur(${8 * scale}px)`;
     ctx.fillStyle = PALETTE.lavaLow;
-    ctx.fill(shore);
-    ctx.filter = `blur(${3 * scale}px)`;
+    drawBlurred(ctx, 12 * scale, PALETTE.lavaLow, () => ctx.fill(shore));
     ctx.fillStyle = PALETTE.lavaEdge;
-    ctx.fill(shore);
-    ctx.filter = 'none';
+    drawBlurred(ctx, 5 * scale, PALETTE.lavaEdge, () => ctx.fill(shore));
     // Crust: wandering dark lines at random angles.
     for (const t of tiles) {
       if (rand() < 0.4) continue;
@@ -501,13 +498,16 @@ export function paintHall(ctx: Ctx, input: HallInput, scale: number): void {
   ctx.restore();
 }
 
-/** Blurred orange glow of all lava, for the scene's pulsing additive layer. */
+/** Blurred orange glow spilling out around the lava, for the scene's pulsing additive layer. */
 export function paintLavaGlow(ctx: Ctx, input: HallInput, scale: number): void {
-  const grid = terrainGrid(input.level);
+  const lava = terrainPath(terrainGrid(input.level), 'lava', 16);
   ctx.save();
   ctx.scale(scale, scale);
   ctx.translate(HALL_MARGIN, HALL_MARGIN);
   ctx.fillStyle = 'rgba(255,106,42,0.75)';
-  drawBlurred(ctx, 12 * scale, 'rgb(255,106,42)', () => ctx.fill(terrainPath(grid, 'lava', 16)));
+  drawBlurred(ctx, 12 * scale, 'rgb(255,106,42)', () => ctx.fill(lava));
+  // Not over the lava itself, which would wash its colours out.
+  ctx.globalCompositeOperation = 'destination-out';
+  ctx.fill(lava);
   ctx.restore();
 }

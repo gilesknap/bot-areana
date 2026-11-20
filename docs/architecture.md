@@ -243,7 +243,8 @@ One run at a time per worker; each run gets a fresh Python namespace. Messages f
   concrete walls with hazard-stripe ends and drop shadows, glowing lava, water, pits, rough
   ground, scorch marks + smoke + wreck debris where things die, headlight beam on the player,
   radar sweep on `scan`, muzzle flash, glowing bolts with trails, LOCK brackets + distance on the
-  enemy the player's blaster points at, vignette. Animated (lava glow, sweep, smoke).
+  enemy the player's blaster points at, vignette. Animated (lava glow and upwellings, sweep, smoke,
+  corner lights, dust motes). The canvas has `devicePixelRatio` pixels per CSS pixel (crisp on HiDPI).
   The HUD overlay (HULL / ENERGY bars, objective counter) is DOM: `ArenaHud` in `render/hud.ts`,
   fed by the UI from `onTick` / `onEvent`.
 - `glyphs.ts`: SVG strings for the UI, matching Main.dc.html: `partGlyphSvg(partId | chassisId, size?)`,
@@ -257,9 +258,13 @@ Hash router (works on GitHub Pages): `#/` campaign, `#/level/<id>` briefing,
 Screens follow Campaign.dc.html, Workshop.dc.html and Arena.dc.html exactly (64 px top bar,
 fonts, colours from `src/shared/palette.ts` / CSS variables in `ui/styles.css`). Code & Arena:
 CodeMirror 6 with Python highlighting in the mockup colours, autocomplete from `botApi(design)`,
-error line highlight, API reference panel, hints (`hintsShown`), console with `[mm:ss.t]` prefixes
-(`formatTicks`), run bar (reset, play/pause, step, ½× 1× 2× 4×, `T+ · TICK · SEED`), result dialog
-with stars. Narrow screens (< 1024 px) show a "best on a laptop" notice. Keyboard-navigable menus.
+error line highlight, API reference drawer (generated from `botApi(design)`: signatures, docs, tick
+costs, an example per method that click-inserts into the script), hints (`hintsShown`), console with
+`[mm:ss.t]` prefixes (`formatTicks`), run bar (reset, play/pause, step, ½× 1× 2× 4×, Python boot
+status, `T+ · TICK · SEED`), result dialog with stars. The app starts the one Python worker
+(`ui/runner.ts`) at start-up, so Pyodide boots in the background while the player reads the briefing
+and builds. A short guided tour (`ui/tour.ts`) shows the first time a profile reaches the Workshop and
+Code & Arena (`Profile.toursSeen`). Narrow screens (< 1024 px) show a "best on a laptop" notice. Keyboard-navigable menus.
 
 ### Save (`src/save/`)
 
