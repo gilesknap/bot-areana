@@ -111,7 +111,7 @@ export interface CodeEditor {
   setReadOnly(readOnly: boolean): void;
   showError(line: number | null): void;
   setDesign(design: BotDesign): void;
-  /** Insert code on the cursor's line (if blank) or a new line after it, at its indent. False if read-only. */
+  /** Insert code on the cursor's line (if blank) or a new line after it, at its indent (at the end if the cursor is at 0). False if read-only. */
   insert(code: string): boolean;
   destroy(): void;
 }
@@ -167,7 +167,9 @@ export function createEditor(parent: HTMLElement, doc: string, design: BotDesign
     insert(code) {
       const { state } = view;
       if (state.readOnly) return false;
-      const line = state.doc.lineAt(state.selection.main.head);
+      // Never placed the cursor (still at the very start, in the starter's comments): append at the end.
+      const head = state.selection.main.head;
+      const line = head === 0 ? state.doc.line(state.doc.lines) : state.doc.lineAt(head);
       const indent = /^\s*/.exec(line.text)![0];
       const blank = !line.text.trim();
       // A blank line already has its indent; continuation lines (and a new line) need it added.

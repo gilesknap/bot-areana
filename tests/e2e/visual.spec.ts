@@ -117,9 +117,11 @@ test('first-run tours, Python status and the API drawer', async ({ page }) => {
 
   // API reference: click-to-insert an example into the script.
   await page.getByRole('button', { name: 'API' }).click();
-  await page.getByRole('button', { name: 'Insert example: bot.drive.turn' }).click();
-  await expect(page.locator('.cm-content')).toContainText('bot.drive.turn(90)');
   await shot(page, 'api-drawer');
+  await page.getByRole('button', { name: 'Insert example: bot.drive.turn' }).click();
+  // The drawer closes and the example lands at the end of the script, not in the starter's comments.
+  await expect(page.getByRole('region', { name: 'API reference' })).toBeHidden();
+  await expect(page.locator('.cm-line').last()).toHaveText('bot.drive.turn(90)');
 
   // Tours are remembered for the profile.
   await page.reload();

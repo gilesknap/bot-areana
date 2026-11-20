@@ -105,7 +105,8 @@ export function codeArenaScreen(state: AppState, ctx: LevelContext): Screen {
   const arena = new ArenaView(arenaHost);
   apiDrawer.append(
     apiReference(design, (code) => {
-      if (!editor.insert(code)) log('Editing is locked during a run. Press reset (⟲) to edit.', 'sys');
+      if (!editor.insert(code)) return log('Editing is locked during a run. Press reset (⟲) to edit.', 'sys');
+      showApi(false);
     }),
   );
 
@@ -409,11 +410,12 @@ export function codeArenaScreen(state: AppState, ctx: LevelContext): Screen {
     }
     renderHints(true);
   });
-  apiBtn.addEventListener('click', () => {
-    apiDrawer.hidden = !apiDrawer.hidden;
-    apiBtn.setAttribute('aria-expanded', String(!apiDrawer.hidden));
-    apiBtn.classList.toggle('active', !apiDrawer.hidden);
-  });
+  function showApi(show: boolean) {
+    apiDrawer.hidden = !show;
+    apiBtn.setAttribute('aria-expanded', String(show));
+    apiBtn.classList.toggle('active', show);
+  }
+  apiBtn.addEventListener('click', () => showApi(apiDrawer.hidden));
 
   // ---- Init ----
   renderHints(false);
