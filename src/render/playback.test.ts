@@ -88,27 +88,68 @@ describe('PlaybackClock', () => {
       return c;
     };
 
-    it('step visits every line, moving time only when the next line starts later', () => {
+    /** Step, then let playback run (one tick per update at 1x) until the step has arrived. */
+    const stepFully = (c: PlaybackClock) => {
+      const reached = [...c.step().reached];
+      while (c.moving) reached.push(...c.advance(1000 / 30).reached);
+      return reached;
+    };
+
+    it('step visits every line, playing only when the next line starts later', () => {
       const c = loaded();
       expect(c.line).toBeNull();
       const seen: Array<[number, number | null]> = [];
       for (let i = 0; i < 5; i++) {
-        c.step();
+        stepFully(c);
         seen.push([c.time, c.line]);
       }
       expect(seen).toEqual([[0, 1], [0, 2], [6, 3], [6, 4], [9, 5]]);
     });
 
-    it('a step that jumps emits every frame passed, once', () => {
+    it('a step to a later line plays there at the current speed, emitting each frame once', () => {
       const c = loaded();
       expect(ticksOf(c.step().reached)).toEqual([0]);
       expect(c.step().reached).toEqual([]);
-      expect(ticksOf(c.step().reached)).toEqual([1, 2, 3, 4, 5, 6]);
+      expect(c.step().reached).toEqual([]); // starts playing towards line 3 at tick 6
+      expect(c.moving).toBe(true);
+      expect(c.playing).toBe(false);
+      expect(c.line).toBe(2);
+      c.speed = 2;
+      expect(ticksOf(c.advance(50).reached)).toEqual([1, 2, 3]);
+      expect(c.line).toBe(2);
+      expect(ticksOf(c.advance(1000).reached)).toEqual([4, 5, 6]);
+      expect([c.time, c.line, c.moving]).toEqual([6, 3, false]);
+    });
+
+    it('stepping again while a step plays finishes it at once', () => {
+      const c = loaded();
+      c.step();
+      c.step();
+      c.step();
+      c.advance(50);
+      expect(ticksOf(c.step().reached)).toEqual([2, 3, 4, 5, 6]);
+      expect([c.time, c.line, c.moving]).toEqual([6, 3, false]);
+    });
+
+    it('pause or play during a step', () => {
+      const c = loaded();
+      c.step();
+      c.step();
+      c.step();
+      c.advance(100);
+      c.stepTo = null; // what ArenaView.pause() does
+      c.advance(1000);
+      expect([c.time, c.line]).toEqual([3, 2]);
+      c.step();
+      c.playing = true; // ArenaView.play() also clears stepTo
+      c.stepTo = null;
+      c.advance(100);
+      expect([c.time, c.line]).toEqual([6, 4]);
     });
 
     it('after the last line, step falls back to one tick', () => {
       const c = loaded();
-      for (let i = 0; i < 5; i++) c.step();
+      for (let i = 0; i < 5; i++) stepFully(c);
       c.step();
       expect(c.time).toBe(10);
       expect(c.line).toBe(5);
@@ -122,7 +163,7 @@ describe('PlaybackClock', () => {
       c.advance(100);
       expect(c.line).toBe(4);
       c.playing = false;
-      c.step();
+      stepFully(c);
       expect([c.time, c.line]).toEqual([9, 5]);
     });
 
@@ -131,7 +172,7 @@ describe('PlaybackClock', () => {
       c.playing = true;
       c.advance(100);
       c.playing = false;
-      c.step();
+      stepFully(c);
       expect([c.time, c.line]).toEqual([6, 3]);
     });
 
@@ -149,6 +190,7 @@ describe('PlaybackClock', () => {
       c.step();
       c.step();
       c.rewind();
+      expect(c.moving).toBe(false);
       expect(c.line).toBeNull();
       c.step();
       expect([c.time, c.line]).toEqual([0, 1]);

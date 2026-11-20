@@ -250,9 +250,11 @@ One run at a time per worker; each run gets a fresh Python namespace. Messages f
   `play()`, `pause()`, `step()`, `setSpeed(PlaybackSpeed)`, `reset()`, `destroy()`, and listeners
   `onTick(cb(tick, frame))`, `onEvent(cb(event, tick))` (fired as playback reaches each event),
   `onLine(cb(line | null))` (the script line shown changed), `onEnd(cb)` (playback reached the
-  last frame of a finished run). `step()` moves to the next line record, jumping time only when
-  that line starts at a later tick (lines that take no game time share a tick), and steps one tick
-  once there are no more lines (or none at all, as in `render/demo.ts`). Playback interpolates
+  last frame of a finished run). `step()` moves to the next line record: at once if it starts at
+  the shown tick (lines that take no game time share a tick), else by playing at the current speed
+  until that tick and pausing there. A second `step()` meanwhile finishes it at once; `pause()`
+  stops it where it is, `play()` carries on playing. With no more lines (or none at all, as in
+  `render/demo.ts`) it steps one tick. Playback interpolates
   between ticks for smooth motion. Also `finish()` (no more frames are coming for this run, so
   `onEnd` may fire) and `rewind()` (replay from tick 0 keeping the frames), plus `playing`,
   `speed`, `tick` and `bufferedTick` getters.

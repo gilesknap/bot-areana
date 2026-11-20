@@ -258,9 +258,9 @@ export class ArenaScene extends Phaser.Scene {
       upd = this.clock.step();
       fxDt = 1000 / TICK_RATE;
     } else {
-      const playing = this.clock.playing;
+      const moving = this.clock.moving;
       upd = this.clock.advance(delta);
-      fxDt = playing ? delta * this.clock.speed : 0;
+      fxDt = moving ? delta * this.clock.speed : 0;
     }
     for (const frame of upd.reached) this.handleFrame(frame);
     const last = upd.reached[upd.reached.length - 1];
@@ -281,7 +281,7 @@ export class ArenaScene extends Phaser.Scene {
     this.renderState(this.currentState(), fxDt);
     if (upd.ended) for (const cb of this.listeners.end) cb();
     // This frame is still drawn; the loop then stops until wake().
-    if (this.lowPower && !this.clock.playing && !this.stepRequested) this.game.loop.sleep();
+    if (this.lowPower && !this.clock.moving && !this.stepRequested) this.game.loop.sleep();
   }
 
   private currentState(): InterpolatedState {
@@ -780,7 +780,7 @@ export class ArenaScene extends Phaser.Scene {
     em.sparks.explode(Math.round(18 * k), x, y);
     em.smoke.explode(Math.round(9 * k), x, y);
     em.debris.explode(Math.round(10 * k), x, y);
-    if (this.clock.playing) this.cameras.main.shake(220, 0.004 * k);
+    if (this.clock.moving) this.cameras.main.shake(220, 0.004 * k);
   }
 
   private wreck(x: number, y: number, view: BotView | undefined): void {

@@ -393,8 +393,7 @@ export function codeArenaScreen(state: AppState, ctx: LevelContext): Screen {
     if (phase === 'idle') return void startRun(true);
     stepOnLines = false;
     setPlaying(false);
-    arena.pause();
-    arena.step();
+    arena.step(); // not pause() first: that would cancel a step still playing up to its line
   });
   resetBtn.addEventListener('click', () => reset());
   speedBtns.forEach((b, i) => b.addEventListener('click', () => setSpeed(SPEEDS[i]!.value)));

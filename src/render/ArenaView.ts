@@ -105,15 +105,21 @@ export class ArenaView {
 
   play(): void {
     if (this.clock.atEnd) this.rewind();
+    this.clock.stepTo = null;
     this.clock.playing = true;
     this.scene.wake();
   }
 
+  /** Stop where it is, including a step playing up to its line. */
   pause(): void {
     this.clock.playing = false;
+    this.clock.stepTo = null;
   }
 
-  /** Pause and advance to the next line of the script (one tick if there is none). */
+  /**
+   * Pause and move to the next line of the script, playing up to it at the current speed if it
+   * starts later (a second step finishes that at once); one tick if there is no next line.
+   */
   step(): void {
     this.clock.playing = false;
     this.scene.requestStep();

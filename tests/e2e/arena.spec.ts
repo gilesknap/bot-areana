@@ -27,9 +27,9 @@ test('step highlights the current line and moves to the next one', async ({ page
   await step.click();
   await expect(current).toHaveText('bot.drive.forward(100)');
   expect(await shownTick(page)).toBe(start);
-  // The move takes time: stepping to the turn jumps the arena to when the move ended.
+  // The move takes time: the step plays the move, then stops on the turn.
   await step.click();
-  await expect(current).toHaveText('bot.drive.turn(90)');
+  await expect(current).toHaveText('bot.drive.turn(90)', { timeout: 15_000 });
   expect(await shownTick(page)).toBeGreaterThan(start + 10);
   await shot(page, 'step-line');
 
