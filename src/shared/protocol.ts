@@ -2,7 +2,7 @@
  * Contracts between the Python runtime, the sim, and the main thread.
  */
 import type { ScriptError } from './errors';
-import type { Frame, WorldInit } from './frames';
+import type { Frame, LineRecord, WorldInit } from './frames';
 import type { LevelDef } from './level';
 import type { BotDesign } from './parts';
 import type { MatchResult } from './result';
@@ -65,6 +65,6 @@ export type WorkerToMain =
   | { type: 'fatal'; message: string }
   | { type: 'started'; runId: number; world: WorldInit }
   /** Sent at least every ~50 ms of wall time while the script makes API calls. */
-  | { type: 'frames'; runId: number; frames: Frame[] }
+  | { type: 'frames'; runId: number; frames: Frame[]; lines: LineRecord[] }
   | { type: 'error'; runId: number; error: ScriptError }
   | { type: 'done'; runId: number; result: MatchResult };

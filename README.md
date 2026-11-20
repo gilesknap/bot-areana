@@ -23,7 +23,8 @@ you can export it to a file or share a bot as a link.
    Python API your fitted parts give you, e.g. `bot.drive.forward(100)` or
    `bot.front_sensor.distance()`.
 3. **Code & Arena** - write your script and press Run. Every bot call takes game time, so a
-   normal `while True:` loop works. Use pause, step and ½×-4× speed to watch what happened;
+   normal `while True:` loop works. Use pause, step (one line of your script at a time, lit up
+   in the editor) and ½×-4× speed to watch what happened;
    `print()` and `bot.log()` show up in the console with the game time.
 4. Complete every objective to win. Two extra stars per level reward speed, care, short code or
    saving energy. Clearing a level opens the next one and unlocks new parts.

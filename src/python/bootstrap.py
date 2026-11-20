@@ -230,7 +230,8 @@ class _Session:
     def call(self, attr, method, args, returns):
         if self.over:
             raise _MatchOver()
-        reply = self._send('call', [attr, method, args])
+        # The lines run since the last call all start at this tick, before the call moves time on.
+        reply = self._send('call', [attr, method, args, _take_lines()])
         if 'over' in reply:
             self.over = True
             _stop_player_code()
@@ -286,6 +287,54 @@ def _stop_player_code():
             frame.f_trace = local
             frame.f_trace_lines = True
         frame = frame.f_back
+
+
+# ---- line records -------------------------------------------------------------------------------
+# Every line of main.py as it starts, so playback can step through the script a line at a time.
+# sys.monitoring on main.py's own code objects only: the rest of Python (the bridge, the sim
+# calls) runs untraced. Between two bot calls (one tick) it keeps the first lines and the latest;
+# past the cap, each line turns its own event off until the next call, so a long loop that never
+# calls the bot runs at full speed.
+MAX_LINES_PER_TICK = 100
+_LINE_TOOL = sys.monitoring.DEBUGGER_ID
+_lines = []
+_muted = False
+
+
+def _on_line(code, line):
+    global _muted
+    if len(_lines) < MAX_LINES_PER_TICK:
+        _lines.append(line)
+        return None
+    _lines[-1] = line
+    _muted = True
+    return sys.monitoring.DISABLE
+
+
+def _take_lines():
+    global _muted
+    if _muted:
+        _muted = False
+        sys.monitoring.restart_events()
+    taken = _lines[:]
+    _lines.clear()
+    return taken
+
+
+def _code_objects(code):
+    yield code
+    for const in code.co_consts:
+        if isinstance(const, type(code)):
+            yield from _code_objects(const)
+
+
+def _record_lines(code, on):
+    for c in _code_objects(code):
+        sys.monitoring.set_local_events(_LINE_TOOL, c, sys.monitoring.events.LINE if on else 0)
+
+
+sys.monitoring.use_tool_id(_LINE_TOOL, 'bot-arena lines')
+sys.monitoring.register_callback(_LINE_TOOL, sys.monitoring.events.LINE, _on_line)
 
 
 def _snapshot_modules():
@@ -376,35 +425,41 @@ def run_player(bridge, bot_source, script, seed, watchdog_seconds):
     consoles = _Console(session, 'stdout'), _Console(session, 'stderr')
     sys.stdout, sys.stderr = consoles
 
+    code = None
+    _lines.clear()
     try:
         code = compile(script, 'main.py', 'exec')
+        _record_lines(code, True)
         if watchdog_seconds:
             _install_watchdog(session, watchdog_seconds)
         exec(code, namespace)
+        status = {'status': 'over' if session.over else 'ok'}
     except _MatchOver:
-        return _dumps({'status': 'over'})
+        status = {'status': 'over'}
     except SystemExit:
-        pass
+        status = {'status': 'over' if session.over else 'ok'}
     except _Watchdog as exc:
-        if session.over:
-            return _dumps({'status': 'over'})
-        return _dumps({'status': 'watchdog', 'line': _error_line(exc)})
+        status = {'status': 'over'} if session.over else {'status': 'watchdog', 'line': _error_line(exc)}
     except _InternalError as exc:
-        return _dumps({'status': 'internal', 'message': str(exc)})
+        status = {'status': 'internal', 'message': str(exc)}
     except BaseException as exc:
-        return _dumps({
+        status = {
             'status': 'error',
             'type': type(exc).__name__,
             'message': _error_message(exc, renames),
             'line': _error_line(exc),
             'game': isinstance(exc, BotError),
-        })
+        }
     finally:
         sys.settrace(None)
+        if code is not None:
+            _record_lines(code, False)
         for console in consoles:
             console.close_line()
         _restore_modules(_PRISTINE)
-    return _dumps({'status': 'over' if session.over else 'ok'})
+    # Lines after the last bot call (and the one that raised, if any) start at the final tick.
+    status['lines'] = _take_lines()
+    return _dumps(status)
 
 
 _PRISTINE = _snapshot_modules()

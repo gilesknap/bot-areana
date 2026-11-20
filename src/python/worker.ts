@@ -40,9 +40,9 @@ scope.onmessage = async (event) => {
   try {
     const { result } = executeRun(py, createMatch, msg, {
       onStarted: (world) => post({ type: 'started', runId, world }),
-      onFrames: (frames) => {
-        tick = frames.at(-1)!.tick;
-        post({ type: 'frames', runId, frames });
+      onFrames: (frames, lines) => {
+        tick = frames.at(-1)?.tick ?? tick;
+        post({ type: 'frames', runId, frames, lines });
       },
       onError: (error) => post({ type: 'error', runId, error }),
     });

@@ -1,6 +1,6 @@
 /**
- * CodeMirror 6 Python editor: mockup colours, bot-API autocomplete, error-line highlight,
- * wrapped long lines, read-only while a run is in progress.
+ * CodeMirror 6 Python editor: mockup colours, bot-API autocomplete, error-line and current-line
+ * (playback) highlights, wrapped long lines, read-only while a run is in progress.
  */
 import { autocompletion, completeFromList, type Completion, type CompletionContext, type CompletionResult } from '@codemirror/autocomplete';
 import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands';
@@ -25,23 +25,29 @@ import { signature } from '../parts/api';
 import { completionData } from './apiRef';
 import { pyHighlighter } from './highlight';
 
-const setErrorLine = StateEffect.define<number | null>();
-
-const errorLineField = StateField.define<DecorationSet>({
-  create: () => Decoration.none,
-  update(deco, tr) {
-    for (const e of tr.effects) {
-      if (e.is(setErrorLine)) {
-        if (e.value === null || e.value < 1 || e.value > tr.state.doc.lines) return Decoration.none;
-        const line = tr.state.doc.line(e.value);
-        return Decoration.set([Decoration.line({ class: 'cm-error-line' }).range(line.from)]);
+/** A whole-line highlight with this class, moved by its effect (null clears it). */
+function lineMarker(cls: string) {
+  const set = StateEffect.define<number | null>();
+  const field = StateField.define<DecorationSet>({
+    create: () => Decoration.none,
+    update(deco, tr) {
+      for (const e of tr.effects) {
+        if (e.is(set)) {
+          if (e.value === null || e.value < 1 || e.value > tr.state.doc.lines) return Decoration.none;
+          const line = tr.state.doc.line(e.value);
+          return Decoration.set([Decoration.line({ class: cls }).range(line.from)]);
+        }
       }
-    }
-    // Any edit clears the stale error marker.
-    return tr.docChanged ? Decoration.none : deco.map(tr.changes);
-  },
-  provide: (f) => EditorView.decorations.from(f),
-});
+      // Any edit clears a stale marker.
+      return tr.docChanged ? Decoration.none : deco.map(tr.changes);
+    },
+    provide: (f) => EditorView.decorations.from(f),
+  });
+  return { set, field };
+}
+
+const errorLine = lineMarker('cm-error-line');
+const currentLine = lineMarker('cm-current-line');
 
 /**
  * Long lines wrap (starter comments are wider than the editor), and a wrapped line's
@@ -88,6 +94,7 @@ const theme = EditorView.theme(
     '&.cm-focused .cm-cursor': { borderLeftColor: 'var(--cyan)' },
     '&.cm-focused .cm-selectionBackground, .cm-selectionBackground, ::selection': { backgroundColor: '#1D3A4A !important' },
     '.cm-error-line': { backgroundColor: 'var(--error-line)' },
+    '.cm-current-line': { backgroundColor: 'var(--current-line)', boxShadow: 'inset 3px 0 0 var(--cyan)' },
     '.cm-tooltip': { backgroundColor: 'var(--panel)', border: '1px solid var(--border)', color: 'var(--ink)' },
     '.cm-tooltip-autocomplete > ul > li[aria-selected]': { backgroundColor: 'var(--panel-active)', color: 'var(--cyan)' },
     '.cm-completionDetail': { color: 'var(--steel)', fontStyle: 'normal', marginLeft: '8px' },
@@ -145,6 +152,8 @@ export interface CodeEditor {
   getValue(): string;
   setReadOnly(readOnly: boolean): void;
   showError(line: number | null): void;
+  /** Mark the line playback is on (null clears it). */
+  showLine(line: number | null): void;
   setDesign(design: BotDesign): void;
   /** Insert code on the cursor's line (if blank) or a new line after it, at its indent (at the end if the cursor is at 0). False if read-only. */
   insert(code: string): boolean;
@@ -173,7 +182,8 @@ export function createEditor(parent: HTMLElement, doc: string, design: BotDesign
         completion.of(autocompletion({ override: [botCompletions(design)], icons: false })),
         keymap.of([...defaultKeymap, ...historyKeymap, ...searchKeymap, indentWithTab]),
         readOnly.of([]),
-        errorLineField,
+        errorLine.field,
+        currentLine.field,
         EditorView.lineWrapping,
         wrapIndented,
         theme,
@@ -193,10 +203,15 @@ export function createEditor(parent: HTMLElement, doc: string, design: BotDesign
       view.dom.classList.toggle('cm-readonly', ro);
     },
     showError(line) {
-      view.dispatch({ effects: setErrorLine.of(line) });
+      view.dispatch({ effects: errorLine.set.of(line) });
       if (line && line <= view.state.doc.lines) {
         view.dispatch({ effects: EditorView.scrollIntoView(view.state.doc.line(line).from, { y: 'center' }) });
       }
+    },
+    showLine(line) {
+      const effects: StateEffect<unknown>[] = [currentLine.set.of(line)];
+      if (line && line <= view.state.doc.lines) effects.push(EditorView.scrollIntoView(view.state.doc.line(line).from, { y: 'nearest' }));
+      view.dispatch({ effects });
     },
     setDesign(design) {
       view.dispatch({ effects: completion.reconfigure(autocompletion({ override: [botCompletions(design)], icons: false })) });

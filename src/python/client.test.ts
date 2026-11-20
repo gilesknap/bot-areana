@@ -67,8 +67,8 @@ describe('PythonRunner', () => {
     const { h, runId, worker } = await startRun();
     expect(worker.posted[0]).toMatchObject({ type: 'run', script: 'pass', seed: 1 });
     worker.emit({ type: 'started', runId, world });
-    worker.emit({ type: 'frames', runId, frames: [frame(0)] });
-    worker.emit({ type: 'frames', runId: runId + 99, frames: [frame(5)] }); // stale
+    worker.emit({ type: 'frames', runId, frames: [frame(0)], lines: [] });
+    worker.emit({ type: 'frames', runId: runId + 99, frames: [frame(5)], lines: [] }); // stale
     const result = { won: true } as MatchResult;
     worker.emit({ type: 'done', runId, result });
     expect(h.onStarted).toHaveBeenCalledWith(world);
@@ -79,7 +79,7 @@ describe('PythonRunner', () => {
   it('watchdog: kills a silent worker, keeps frames and reports a lost run', async () => {
     const { h, runId, worker: first } = await startRun();
     first.emit({ type: 'started', runId, world });
-    first.emit({ type: 'frames', runId, frames: [frame(0), frame(1, 80), frame(2, 70)] });
+    first.emit({ type: 'frames', runId, frames: [frame(0), frame(1, 80), frame(2, 70)], lines: [] });
     await vi.advanceTimersByTimeAsync(2500);
     expect(h.onError).not.toHaveBeenCalled();
     await vi.advanceTimersByTimeAsync(1000);

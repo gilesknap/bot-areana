@@ -4,8 +4,12 @@
  * `time` is measured in ticks and may be fractional; the view shows frames[floor(time)]
  * blended towards the next one. A frame's events are emitted once, when `time` first reaches
  * that frame's index. While the run is still streaming, playback waits at the newest frame.
+ *
+ * Beside the frames, a line cursor over the script's LineRecords (frame index = tick): playing
+ * keeps it on the last line started by the shown tick; step() moves it to the next line and only
+ * moves time when that line starts at a later tick.
  */
-import type { Frame } from '../shared/frames';
+import type { Frame, LineRecord } from '../shared/frames';
 import { TICK_RATE } from '../shared/geometry';
 import type { PlaybackSpeed } from '../shared/save';
 
@@ -18,6 +22,9 @@ export interface PlaybackUpdate {
 
 export class PlaybackClock {
   readonly frames: Frame[] = [];
+  readonly lines: LineRecord[] = [];
+  /** Index into `lines` of the current line, -1 before the first. */
+  lineIndex = -1;
   time = 0;
   speed: PlaybackSpeed = 1;
   playing = false;
@@ -35,12 +42,18 @@ export class PlaybackClock {
     return Math.floor(this.time);
   }
 
+  /** Line of the script the shown tick is on, or null (none yet, or no line records). */
+  get line(): number | null {
+    return this.lines[this.lineIndex]?.line ?? null;
+  }
+
   get atEnd(): boolean {
     return this.finished && this.frames.length > 0 && this.time >= this.lastIndex;
   }
 
-  push(frames: readonly Frame[]): void {
+  push(frames: readonly Frame[], lines: readonly LineRecord[] = []): void {
     for (const f of frames) this.frames.push(f);
+    for (const l of lines) this.lines.push(l);
   }
 
   finish(): void {
@@ -50,6 +63,7 @@ export class PlaybackClock {
   /** Drop everything, ready for a new run. */
   clear(): void {
     this.frames.length = 0;
+    this.lines.length = 0;
     this.finished = false;
     this.rewind();
   }
@@ -57,6 +71,7 @@ export class PlaybackClock {
   /** Seek back to tick 0 keeping the frames (replay). Frame 0's events will be emitted again. */
   rewind(): void {
     this.time = 0;
+    this.lineIndex = -1;
     this.emitted = -1;
     this.endSignalled = false;
   }
@@ -65,14 +80,24 @@ export class PlaybackClock {
   advance(dtMs: number): PlaybackUpdate {
     if (this.playing && this.frames.length > 0) {
       this.time = Math.min(this.time + (dtMs / 1000) * TICK_RATE * this.speed, this.lastIndex);
+      while (this.lineIndex + 1 < this.lines.length && this.lines[this.lineIndex + 1]!.tick <= this.index) this.lineIndex++;
     }
     return this.collect();
   }
 
-  /** Pause and move forward exactly one tick (snapping to whole ticks). */
+  /**
+   * Pause and move to the next line of the script, jumping time to the tick it starts at (whole
+   * ticks). With no next line received (the script has ended, or no line records) step one tick.
+   */
   step(): PlaybackUpdate {
     this.playing = false;
-    if (this.frames.length > 0) this.time = Math.min(this.index + 1, this.lastIndex);
+    const next = this.lines[this.lineIndex + 1];
+    if (next && next.tick <= this.lastIndex) {
+      this.lineIndex++;
+      this.time = Math.max(this.index, next.tick);
+    } else if (this.frames.length > 0) {
+      this.time = Math.min(this.index + 1, this.lastIndex);
+    }
     return this.collect();
   }
 

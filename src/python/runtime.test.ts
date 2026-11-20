@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import type { BotDesign } from '../shared/parts';
 import { runHeadless, type HeadlessOptions } from './headless';
+
+// bootstrap.py's cap on lines recorded between two bot calls.
+const MAX_LINES_PER_TICK = 100;
 import { testDesign, testLevel, testSim } from './testSim';
 
 const run = (script: string, design: BotDesign = testDesign, options: HeadlessOptions = {}) =>
@@ -80,6 +83,26 @@ describe('python runtime (real Pyodide, test sim)', () => {
     const a = await run('import random\nprint(random.random())');
     const b = await run('import random\nprint(random.random())');
     expect(a.prints).toEqual(b.prints);
+  });
+
+  it('records each line of main.py as it starts, with its tick', async () => {
+    const r = await run('x = 3\nbot.wait(1)\ndef f():\n    return x + 1\ny = f()\nbot.wait(1)\nprint(y)');
+    expect(r.error).toBeUndefined();
+    expect(r.lines.map((l) => [l.tick, l.line])).toEqual([[0, 1], [0, 2], [30, 3], [30, 5], [30, 4], [30, 6], [60, 7]]);
+  });
+
+  it('keeps the first lines and the latest of a loop that never calls the bot', async () => {
+    const r = await run('for i in range(1000):\n    x = i\nbot.wait(1)\nprint(x)');
+    const atStart = r.lines.filter((l) => l.tick === 0);
+    expect(atStart).toHaveLength(MAX_LINES_PER_TICK);
+    expect(atStart.at(-1)!.line).toBe(3);
+    expect(r.lines.at(-1)).toEqual({ tick: 30, line: 4 });
+  });
+
+  it('records the line that raised', async () => {
+    const r = await run('bot.wait(0.1)\nprint(1 / 0)');
+    expect(r.error?.line).toBe(2);
+    expect(r.lines.at(-1)).toEqual({ tick: 3, line: 2 });
   });
 
   it('caps runaway printing within one tick', async () => {

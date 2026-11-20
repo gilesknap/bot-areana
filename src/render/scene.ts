@@ -49,6 +49,7 @@ export interface SceneListeners {
   tick: Set<(tick: number, frame: Frame) => void>;
   event: Set<(event: SimEvent, tick: number) => void>;
   end: Set<() => void>;
+  line: Set<(line: number | null) => void>;
 }
 
 interface Fx {
@@ -142,7 +143,7 @@ function loadFonts(): Promise<unknown> {
 
 export class ArenaScene extends Phaser.Scene {
   readonly clock = new PlaybackClock();
-  listeners: SceneListeners = { tick: new Set(), event: new Set(), end: new Set() };
+  listeners: SceneListeners = { tick: new Set(), event: new Set(), end: new Set(), line: new Set() };
   onBoot?: () => void;
   /**
    * Render only while playing (and once after each change) instead of animating the idle hall.
@@ -154,6 +155,7 @@ export class ArenaScene extends Phaser.Scene {
   private ready = false;
   private buildToken = 0;
   private stepRequested = false;
+  private shownLine: number | null = null;
   private realTime = 0;
 
   private bots = new Map<string, BotView>();
@@ -263,6 +265,10 @@ export class ArenaScene extends Phaser.Scene {
     for (const frame of upd.reached) this.handleFrame(frame);
     const last = upd.reached[upd.reached.length - 1];
     if (last) for (const cb of this.listeners.tick) cb(last.tick, last);
+    if (this.clock.line !== this.shownLine) {
+      this.shownLine = this.clock.line;
+      for (const cb of this.listeners.line) cb(this.shownLine);
+    }
 
     // Particles and effects run on playback time, so they freeze on pause and speed up at 4x.
     const scale = delta > 0 ? fxDt / delta : 0;
