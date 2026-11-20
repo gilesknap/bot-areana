@@ -44,5 +44,6 @@ test('jspi spike', async ({ page, browserName }) => {
     const w = new Worker(url, { type: 'module' });
     return await new Promise((res) => { w.onmessage = (e) => res(e.data); w.onerror = (e) => res({ workerError: String(e.message) }); });
   }, WORKER(PYODIDE_CDN));
-  console.log(`SPIKE ${browserName} ${await page.evaluate(() => navigator.userAgent)} ${JSON.stringify(out)}`);
+  const filter = await page.evaluate(() => typeof (document.createElement('canvas').getContext('2d') as unknown as { filter?: unknown }).filter);
+  console.log(`SPIKE ${browserName} ctx.filter=${filter} ${await page.evaluate(() => navigator.userAgent)} ${JSON.stringify(out)}`);
 });
