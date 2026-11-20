@@ -292,10 +292,11 @@ def _stop_player_code():
 # ---- line records -------------------------------------------------------------------------------
 # Every line of main.py as it starts, so playback can step through the script a line at a time.
 # sys.monitoring on main.py's own code objects only: the rest of Python (the bridge, the sim
-# calls) runs untraced. Between two bot calls (one tick) it keeps the first lines and the latest;
-# past the cap, each line turns its own event off until the next call, so a long loop that never
-# calls the bot runs at full speed.
-MAX_LINES_PER_TICK = 100
+# calls) runs untraced. Between two bot calls (so within one tick: every call takes at least one)
+# it keeps the first MAX_LINES_PER_CALL lines. Past the cap, the last slot takes each further line
+# once as it turns that line's event off until the next call, so a long loop that never calls the
+# bot runs at full speed; the last slot is then the call's line, or the error's (run_player).
+MAX_LINES_PER_CALL = 100
 _LINE_TOOL = sys.monitoring.DEBUGGER_ID
 _lines = []
 _muted = False
@@ -303,7 +304,7 @@ _muted = False
 
 def _on_line(code, line):
     global _muted
-    if len(_lines) < MAX_LINES_PER_TICK:
+    if len(_lines) < MAX_LINES_PER_CALL:
         _lines.append(line)
         return None
     _lines[-1] = line
@@ -457,8 +458,12 @@ def run_player(bridge, bot_source, script, seed, watchdog_seconds):
         for console in consoles:
             console.close_line()
         _restore_modules(_PRISTINE)
-    # Lines after the last bot call (and the one that raised, if any) start at the final tick.
-    status['lines'] = _take_lines()
+    # Lines after the last bot call start at the final tick. Past the cap the last one may be stale,
+    # so end on the line that raised.
+    lines = _take_lines()
+    if lines and status.get('line'):
+        lines[-1] = status['line']
+    status['lines'] = lines
     return _dumps(status)
 
 

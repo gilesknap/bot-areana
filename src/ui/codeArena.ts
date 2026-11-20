@@ -159,6 +159,8 @@ export function codeArenaScreen(state: AppState, ctx: LevelContext): Screen {
   let run: { cancel(): void } | null = null;
   let pendingError: ScriptError | null = null;
   let result: MatchResult | null = null;
+  /** Step started the run: step onto line 1 as soon as the first lines arrive. */
+  let stepOnLines = false;
 
   function setPhase(p: Phase) {
     phase = p;
@@ -218,6 +220,7 @@ export function codeArenaScreen(state: AppState, ctx: LevelContext): Screen {
     setScript(state, ctx, script);
     state.flush();
     reset(false);
+    stepOnLines = startPaused;
     consoleOut.replaceChildren();
     setPhase('running');
     setPlaying(!startPaused);
@@ -248,7 +251,13 @@ export function codeArenaScreen(state: AppState, ctx: LevelContext): Screen {
           if (playing) arena.play();
           else arena.pause();
         },
-        onFrames: (frames: Frame[], lines: LineRecord[]) => arena.push(frames, lines),
+        onFrames: (frames: Frame[], lines: LineRecord[]) => {
+          arena.push(frames, lines);
+          if (stepOnLines && lines.length) {
+            stepOnLines = false;
+            if (!playing) arena.step();
+          }
+        },
         onFatal: (message: string) => {
           status.textContent = `Python failed to load: ${message}`;
           log(`Python failed to load: ${message}. Check your connection and reload.`, 'err');
@@ -382,6 +391,7 @@ export function codeArenaScreen(state: AppState, ctx: LevelContext): Screen {
   });
   stepBtn.addEventListener('click', () => {
     if (phase === 'idle') return void startRun(true);
+    stepOnLines = false;
     setPlaying(false);
     arena.pause();
     arena.step();

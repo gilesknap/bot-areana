@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import type { BotDesign } from '../shared/parts';
 import { runHeadless, type HeadlessOptions } from './headless';
+import { testDesign, testLevel, testSim } from './testSim';
 
 // bootstrap.py's cap on lines recorded between two bot calls.
-const MAX_LINES_PER_TICK = 100;
-import { testDesign, testLevel, testSim } from './testSim';
+const MAX_LINES_PER_CALL = 100;
 
 const run = (script: string, design: BotDesign = testDesign, options: HeadlessOptions = {}) =>
   runHeadless({ level: testLevel(), design, script, seed: 7 }, { createMatch: testSim.createMatch, ...options });
@@ -91,12 +91,19 @@ describe('python runtime (real Pyodide, test sim)', () => {
     expect(r.lines.map((l) => [l.tick, l.line])).toEqual([[0, 1], [0, 2], [30, 3], [30, 5], [30, 4], [30, 6], [60, 7]]);
   });
 
-  it('keeps the first lines and the latest of a loop that never calls the bot', async () => {
+  it('keeps the first lines of a loop that never calls the bot, then the call', async () => {
     const r = await run('for i in range(1000):\n    x = i\nbot.wait(1)\nprint(x)');
     const atStart = r.lines.filter((l) => l.tick === 0);
-    expect(atStart).toHaveLength(MAX_LINES_PER_TICK);
+    expect(atStart).toHaveLength(MAX_LINES_PER_CALL);
     expect(atStart.at(-1)!.line).toBe(3);
     expect(r.lines.at(-1)).toEqual({ tick: 30, line: 4 });
+  });
+
+  it('ends on the line that raised, even past the cap', async () => {
+    const r = await run('for i in range(200):\n    a = i\n    b = 10 / (150 - i)');
+    expect(r.error?.line).toBe(3);
+    expect(r.lines).toHaveLength(MAX_LINES_PER_CALL);
+    expect(r.lines.at(-1)).toEqual({ tick: 0, line: 3 });
   });
 
   it('records the line that raised', async () => {

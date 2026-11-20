@@ -17,13 +17,11 @@ test('step highlights the current line and moves to the next one', async ({ page
 
   const step = page.getByRole('button', { name: 'Step one line' });
   const current = page.locator('.cm-current-line');
-  await step.click(); // starts the run paused
-  // The lines arrive from the worker with the frames: step until the first is lit.
-  await expect(async () => {
-    await step.click();
-    await expect(current).toHaveText('x = 3', { timeout: 500 });
-  }).toPass({ timeout: 15_000 });
+  // The first step starts the run paused and lands on line 1 once the worker sends it.
+  await step.click();
+  await expect(current).toHaveText('x = 3', { timeout: 15_000 });
   const start = await shownTick(page);
+  expect(start).toBe(0);
 
   // `x = 3` takes no game time: the next line is at the same tick.
   await step.click();

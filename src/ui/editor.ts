@@ -93,8 +93,9 @@ const theme = EditorView.theme(
     '.cm-activeLineGutter': { backgroundColor: 'transparent', color: 'var(--steel)' },
     '&.cm-focused .cm-cursor': { borderLeftColor: 'var(--cyan)' },
     '&.cm-focused .cm-selectionBackground, .cm-selectionBackground, ::selection': { backgroundColor: '#1D3A4A !important' },
-    '.cm-error-line': { backgroundColor: 'var(--error-line)' },
+    // After the current line, so an error on the current line shows red.
     '.cm-current-line': { backgroundColor: 'var(--current-line)', boxShadow: 'inset 3px 0 0 var(--cyan)' },
+    '.cm-error-line': { backgroundColor: 'var(--error-line)' },
     '.cm-tooltip': { backgroundColor: 'var(--panel)', border: '1px solid var(--border)', color: 'var(--ink)' },
     '.cm-tooltip-autocomplete > ul > li[aria-selected]': { backgroundColor: 'var(--panel-active)', color: 'var(--cyan)' },
     '.cm-completionDetail': { color: 'var(--steel)', fontStyle: 'normal', marginLeft: '8px' },
