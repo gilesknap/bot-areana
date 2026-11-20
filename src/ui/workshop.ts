@@ -111,7 +111,7 @@ export function workshopScreen(state: AppState, ctx: LevelContext): Screen {
         if (p.comingSoon) locked.push({ name: p.name, note: 'later' });
         else if (!ctx.unlocked.has(p.id)) {
           const n = unlockLevel(p.id);
-          locked.push({ name: p.name, note: n ? `unlocks at level ${n}` : 'locked' });
+          locked.push({ name: p.name, note: n ? `level ${n}` : 'locked' });
         }
       }
       if (!available.length) continue;
@@ -154,7 +154,7 @@ export function workshopScreen(state: AppState, ctx: LevelContext): Screen {
     for (const c of PLAYER_CHASSIS) {
       if (ctx.unlocked.has(c.id)) continue;
       const n = unlockLevel(c.id);
-      locked.push({ name: c.name, note: n ? `unlocks at level ${n}` : 'locked' });
+      locked.push({ name: c.name, note: n ? `level ${n}` : 'locked' });
     }
     // One dashed box for everything still locked, so a long list doesn't push the bin off screen.
     if (locked.length) {
@@ -162,6 +162,7 @@ export function workshopScreen(state: AppState, ctx: LevelContext): Screen {
         h(
           'div.part-locked',
           { 'aria-label': 'Locked parts' },
+          h('div.locked-row.locked-head', {}, h('span', {}, 'LOCKED'), h('span.locked-note', {}, 'UNLOCKS AT')),
           ...locked.map((l) => h('div.locked-row', {}, icon('lock'), h('span', {}, l.name), h('span.locked-note', {}, l.note))),
         ),
       );

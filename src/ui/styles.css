@@ -593,6 +593,15 @@ a.brand:hover {
   align-items: center;
   gap: 8px;
 }
+.locked-head {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  color: var(--dim);
+}
+.locked-row svg {
+  flex-shrink: 0;
+}
 .locked-note {
   margin-left: auto;
   font-family: var(--font-mono);

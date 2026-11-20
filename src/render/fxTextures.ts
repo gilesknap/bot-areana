@@ -217,9 +217,9 @@ export function makeFxTextures(textures: Phaser.Textures.TextureManager): void {
     // Dim floor plates beyond the arena's outer wall (fills the letterbox around the hall).
     ctx.fillStyle = '#080B0F';
     ctx.fillRect(0, 0, w, h);
-    ctx.fillStyle = '#0C1015';
+    ctx.fillStyle = '#0A0E13';
     ctx.fillRect(1, 1, w - 2, h - 2);
-    ctx.fillStyle = '#151C24';
+    ctx.fillStyle = '#121820';
     for (const [x, y] of [[7, 7], [w - 7, 7], [7, h - 7], [w - 7, h - 7]] as const) {
       ctx.beginPath();
       ctx.arc(x, y, 1.6, 0, Math.PI * 2);

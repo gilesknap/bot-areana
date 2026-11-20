@@ -336,14 +336,18 @@ function drawTerrain(ctx: Ctx, grid: TerrainGrid, rand: () => number, scale: num
       ctx.fillStyle = g;
       ctx.fillRect(cx - r, cy - r, 2 * r, 2 * r);
     }
-    // Cooler, darker lava along the shore.
-    ctx.filter = `blur(${7 * scale}px)`;
-    ctx.strokeStyle = PALETTE.lavaLow;
-    ctx.lineWidth = 22;
-    ctx.stroke(lava);
-    ctx.strokeStyle = PALETTE.lavaEdge;
-    ctx.lineWidth = 8;
-    ctx.stroke(lava);
+    // Cooler, darker lava along the shore: blur the surrounding non-lava tiles in over the edge.
+    // (Stroking the path would also mark the seams between tiles.)
+    const shore = new Path2D();
+    for (let r = -1; r <= grid.rows; r++)
+      for (let c = -1; c <= grid.cols; c++)
+        if (grid.at(c, r) !== 'lava') shore.rect(c * T, r * T, T, T);
+    ctx.filter = `blur(${8 * scale}px)`;
+    ctx.fillStyle = PALETTE.lavaLow;
+    ctx.fill(shore);
+    ctx.filter = `blur(${3 * scale}px)`;
+    ctx.fillStyle = PALETTE.lavaEdge;
+    ctx.fill(shore);
     ctx.filter = 'none';
     // Crust: wandering dark lines at random angles.
     for (const t of tiles) {
@@ -366,9 +370,6 @@ function drawTerrain(ctx: Ctx, grid: TerrainGrid, rand: () => number, scale: num
       ctx.stroke();
     }
     ctx.restore();
-    ctx.strokeStyle = '#3A1408';
-    ctx.lineWidth = 3;
-    ctx.stroke(lava);
   }
 }
 
