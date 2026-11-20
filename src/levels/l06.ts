@@ -50,7 +50,7 @@ export const l06: LevelDef = {
   budget: { weight: 20, power: 2 },
   unlocks: ['bump'],
   stars: [
-    { type: 'time', seconds: 40, label: 'Under 40 seconds' },
+    { type: 'time', seconds: 37, label: 'Under 37 seconds' },
     { type: 'lines', max: 12, label: '12 lines of code or fewer' },
   ],
   seed: 606,

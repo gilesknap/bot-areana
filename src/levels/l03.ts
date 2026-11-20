@@ -63,11 +63,11 @@ if gap > 300:
     # Drive up the lane, then turn right towards the flag.
 else:
     print("Blocked. Time for the right lane.")
-    # Turn round and go the other way.
+    # Turn right, cross over to the right lane and go up that one.
 `,
   hints: [
     "An open lane reads about 420 cm; a blocked one under 200. That's why the starter compares with 300.",
-    'Up the left lane is 380 cm, and from its top the flag is 240 cm to your right.',
+    'Each lane is 380 cm long, and the flag is 240 cm across from the top of either lane. The right lane is 480 cm to the right of the left one.',
     'If blocked: turn(90), forward(480), turn(-90), forward(380), turn(-90), forward(240).',
   ],
   solution: {

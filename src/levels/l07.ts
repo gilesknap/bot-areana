@@ -51,7 +51,7 @@ export const l07: LevelDef = {
         ],
         sightRange: 250,
         speedFactor: 0.6,
-        fireDelay: 1,
+        fireDelay: 2,
       },
     },
   ],
@@ -78,7 +78,7 @@ while True:
   hints: [
     'Inside the for loop:  if thing.kind == "bot":  then  bot.drive.turn(thing.bearing)',
     'After turning, fire only when ready:  if bot.blaster.ready(): bot.blaster.fire()',
-    'Moving targets are hard to hit. Shorten the wait to about 0.2 s, and save your shots until it is closer than 300 cm.',
+    "It won't come to you. If thing.distance is more than 300, drive closer with bot.drive.forward(60) instead of firing. A shorter wait, like 0.5, keeps you on target.",
   ],
   solution: {
     design: { chassis: 'chassis_m', drive: 'wheels', slots: { front: 'blaster', rear: 'radar', centre: 'battery' } },
