@@ -242,7 +242,8 @@ class _Session:
     def call(self, attr, method, args, returns):
         if self.over:
             raise _MatchOver()
-        reply = self._send('call', [attr, method, args])
+        # The lines run since the last call all start at this tick, before the call moves time on.
+        reply = self._send('call', [attr, method, args, _take_lines()])
         if 'over' in reply:
             self.over = True
             _stop_player_code()
@@ -298,6 +299,60 @@ def _stop_player_code():
             frame.f_trace = local
             frame.f_trace_lines = True
         frame = frame.f_back
+
+
+# ---- line records -------------------------------------------------------------------------------
+# Every line of main.py as it starts, so playback can step through the script a line at a time.
+# sys.monitoring on main.py's own code objects only: the rest of Python (the bridge, the sim
+# calls) runs untraced. Between two bot calls (so within one tick: every call takes at least one)
+# it keeps the first MAX_LINES_PER_CALL lines. Past the cap, each further line turns its own event
+# off until the next call, so a long loop that never calls the bot runs at full speed; the last
+# slot is then set to the line making the call (_take_lines), or the line that raised (run_player).
+MAX_LINES_PER_CALL = 100
+_LINE_TOOL = sys.monitoring.DEBUGGER_ID
+_lines = []
+_muted = False
+
+
+def _on_line(code, line):
+    global _muted
+    if len(_lines) < MAX_LINES_PER_CALL:
+        _lines.append(line)
+        return None
+    _lines[-1] = line
+    _muted = True
+    return sys.monitoring.DISABLE
+
+
+def _take_lines():
+    global _muted
+    if _muted:
+        _muted = False
+        sys.monitoring.restart_events()
+        frame = sys._getframe()
+        while frame is not None and frame.f_code.co_filename != 'main.py':
+            frame = frame.f_back
+        if frame is not None:
+            _lines[-1] = frame.f_lineno
+    taken = _lines[:]
+    _lines.clear()
+    return taken
+
+
+def _code_objects(code):
+    yield code
+    for const in code.co_consts:
+        if isinstance(const, type(code)):
+            yield from _code_objects(const)
+
+
+def _record_lines(code, on):
+    for c in _code_objects(code):
+        sys.monitoring.set_local_events(_LINE_TOOL, c, sys.monitoring.events.LINE if on else 0)
+
+
+sys.monitoring.use_tool_id(_LINE_TOOL, 'bot-arena lines')
+sys.monitoring.register_callback(_LINE_TOOL, sys.monitoring.events.LINE, _on_line)
 
 
 def _snapshot_modules():
@@ -388,35 +443,50 @@ def run_player(bridge, bot_source, script, seed, watchdog_seconds):
     consoles = _Console(session, 'stdout'), _Console(session, 'stderr')
     sys.stdout, sys.stderr = consoles
 
+    code = None
+    _lines.clear()
     try:
         code = compile(script, 'main.py', 'exec')
+        _record_lines(code, True)
         if watchdog_seconds:
             _install_watchdog(session, watchdog_seconds)
         exec(code, namespace)
+        status = {'status': 'over' if session.over else 'ok'}
     except _MatchOver:
-        return _dumps({'status': 'over'})
+        status = {'status': 'over'}
     except SystemExit:
-        pass
+        status = {'status': 'over' if session.over else 'ok'}
     except _Watchdog as exc:
-        if session.over:
-            return _dumps({'status': 'over'})
-        return _dumps({'status': 'watchdog', 'line': _error_line(exc)})
+        status = {'status': 'over'} if session.over else {'status': 'watchdog', 'line': _error_line(exc)}
     except _InternalError as exc:
-        return _dumps({'status': 'internal', 'message': str(exc)})
+        status = {'status': 'internal', 'message': str(exc)}
     except BaseException as exc:
-        return _dumps({
+        status = {
             'status': 'error',
             'type': type(exc).__name__,
             'message': _error_message(exc, renames),
             'line': _error_line(exc),
             'game': isinstance(exc, BotError),
-        })
+        }
     finally:
         sys.settrace(None)
+        if code is not None:
+            _record_lines(code, False)
         for console in consoles:
             console.close_line()
         _restore_modules(_PRISTINE)
-    return _dumps({'status': 'over' if session.over else 'ok'})
+    # Lines after the last bot call start at the final tick. They end on the line that raised: past
+    # the cap the last slot may be stale, so it takes that line.
+    muted = _muted
+    lines = _take_lines()
+    line = status.get('line')
+    if lines and line and lines[-1] != line:
+        if muted:
+            lines[-1] = line
+        else:
+            lines.append(line)
+    status['lines'] = lines
+    return _dumps(status)
 
 
 _PRISTINE = _snapshot_modules()
@@ -427,6 +497,6 @@ _PRISTINE = _snapshot_modules()
 `):`        pass`}\n\n`+i.methods.map(e=>W(``,e)).join(`
 `)),r.join(`
 
-`)}const Te=[[/expected ':'/,()=>({friendly:`A line that starts a block (if, while, for, def, else) must end with a colon :`,tip:"Tip: write `while True:` - the colon is easy to forget."})],[/unterminated string|EOL while scanning/,()=>({friendly:`A piece of text is missing its closing quote mark.`,tip:`Tip: strings need a quote at both ends, like "hello".`})],[/unterminated triple-quoted string/,()=>({friendly:`A """triple-quoted""" string is never closed.`})],[/'(.)' was never closed/,e=>({friendly:`A bracket ${e[1]} was opened but never closed.`,tip:`Tip: every ( needs a matching ), every [ a ].`})],[/unmatched '(.)'|closing parenthesis '(.)' does not match/,e=>({friendly:`There is a closing bracket ${e[1]??e[2]} without a matching opening one.`})],[/Maybe you meant '==' or ':=' instead of '='|cannot assign to/,()=>({friendly:`You used = where Python expected a comparison or a name.`,tip:"Tip: = stores a value, == compares two values: `if x == 3:`"})],[/Perhaps you forgot a comma/,()=>({friendly:`Python found two values next to each other with nothing between them.`,tip:`Tip: separate arguments with commas: bot.gps.bearing_to(400, 200)`})],[/invalid decimal literal/,()=>({friendly:`A name or number is malformed - names cannot start with a digit.`})],[/'return' outside function/,()=>({friendly:"`return` only works inside a function (def)."})],[/'break' outside loop|'continue' not properly in loop/,()=>({friendly:"`break` and `continue` only work inside a loop (while or for)."})]],Ee=[[/expected an indented block/,()=>({friendly:`The line after a colon : needs to be indented.`,tip:`Tip: indent the body of if / while / for / def by 4 spaces.`})],[/unexpected indent/,()=>({friendly:`This line is indented more than Python expected.`,tip:`Tip: only indent lines that belong to a block (after a line ending in :).`})],[/unindent does not match/,()=>({friendly:`This line's indentation doesn't line up with the lines above it.`,tip:`Tip: lines in the same block must start at exactly the same column.`})]],G={true:`True`,false:`False`,none:`None`};function De(e){let t=/name '(\w+)' is not defined/.exec(e)?.[1];if(!t)return{friendly:`Python met a name it does not know.`};if(G[t.toLowerCase()]&&t!==G[t.toLowerCase()])return{friendly:`Python doesn't know '${t}'. It is spelled ${G[t.toLowerCase()]}, with a capital letter.`};let n=/Did you mean: '(\w+)'/.exec(e)?.[1];return{friendly:`Python doesn't know the name '${t}'.`+(n?` Did you mean '${n}'?`:``),tip:`Tip: check the spelling (Python cares about capitals), and set a variable before you use it. Parts live on bot, e.g. bot.drive.`}}function K(e){let t;if(t=/^(\S+)\(\) missing \d+ required positional arguments?: (.+)$/.exec(e))return{friendly:`${t[1]}() needs more information: you left out ${t[2]}.`,tip:`Tip: put the value inside the brackets, e.g. bot.drive.forward(100).`};if(t=/^(\S+)\(\) takes (\d+) positional arguments? but (\d+) (?:was|were) given$/.exec(e)){let e=t[1].startsWith(`bot.`),n=Number(t[2])-+!!e,r=Number(t[3])-+!!e;return{friendly:`${t[1]}() takes ${n===0?`no values`:n===1?`1 value`:`${n} values`} but you gave it ${r}.`}}if(t=/^(\S+)\(\) needs a number for (\w+), not (\w+)/.exec(e)){let e=t[3]===`str`?` Numbers go without quotes: 100, not "100".`:``;return{friendly:`${t[1]}() needs a number for ${t[2]}, but got a ${t[3]}.${e}`}}return/'(method|builtin_function_or_method|function)' object/.test(e)||/instances of 'method'/.test(e)?{friendly:`You used a method without calling it.`,tip:`Tip: add brackets to call it: bot.front_sensor.distance(), not bot.front_sensor.distance`}:/'NoneType' object/.test(e)?{friendly:`You used a value that is None (nothing).`,tip:`Tip: some calls return None, e.g. bot.drive.forward(100, wait=False) - don't use their result.`}:/can only concatenate str|unsupported operand type\(s\)/.test(e)?{friendly:`You mixed two types that cannot be combined, like text and a number.`,tip:`Tip: use str(x) to turn a number into text, or print("x is", x).`}:/object is not callable/.test(e)?{friendly:`You put brackets () after something that is not a function or method.`}:{friendly:`A value of the wrong type was used.`}}function Oe(t,n){if(t in e){let r=e[t],i=n||r.message;return{friendly:i[0].toUpperCase()+i.slice(1),tip:r.tip}}let r=e=>{for(let[t,r]of e){let e=n.match(t);if(e)return r(e)}};switch(t){case`SyntaxError`:return r(Te)??{friendly:`Python couldn't understand this line.`,tip:`Tip: look for a missing colon, bracket or quote here or on the line above.`};case`IndentationError`:case`TabError`:return r(Ee)??{friendly:`The indentation (spaces at the start of the line) is wrong here.`};case`NameError`:case`UnboundLocalError`:return De(n);case`TypeError`:return K(n);case`AttributeError`:return{friendly:n.startsWith(`bot`)?n:`That value doesn't have what you asked for: ${n}`,tip:`Tip: the API panel lists everything your bot can do.`};case`ZeroDivisionError`:return{friendly:`You divided by zero, which has no answer.`,tip:`Tip: check the number is not 0 before dividing.`};case`IndexError`:return{friendly:`You asked for an item past the end of a list.`,tip:"Tip: lists start at 0; check len(x) first, or loop with `for item in x:`."};case`KeyError`:return{friendly:`That key is not in the dictionary: ${n}`};case`ValueError`:return{friendly:`A value had the right type but a bad value: ${n}`};case`ModuleNotFoundError`:case`ImportError`:return{friendly:`That module is not available in Bot Arena.`,tip:`Tip: math and random are available; anything that talks to the internet is not.`};case`RecursionError`:return{friendly:`A function kept calling itself and never stopped.`};case`RuntimeError`:return n.startsWith(`input()`)?{friendly:`input() cannot be used here: your bot cannot stop and ask questions.`}:{friendly:`Something went wrong: ${n}`};case`InternalError`:return{friendly:`Something went wrong inside Bot Arena itself - not your code. Try running again.`};default:return{friendly:`Python stopped with a ${t}: ${n}`}}}const q=/* @__PURE__ */ new WeakMap;function J(e){if(q.has(e))return;let t=e.globals.get(`dict`)();e.runPython(xe,{globals:t,filename:`<bot-arena>`}),q.set(e,t.get(`run_player`)),t.destroy()}function Y(e,t,n,r){let{friendly:i,tip:a}=Oe(e,t),o={type:e,message:t,tick:n,friendly:i};return r!=null&&(o.line=r),a&&(o.tip=a),o}function ke(e,n,r,i){J(e);let a=q.get(e),o=n({level:r.level,design:r.design,seed:r.seed,scriptLines:be(r.script)});i.onStarted?.(o.world);let s=i.flushMs??50,c=performance.now(),l=()=>{c=performance.now();let e=o.takeFrames();e.length&&i.onFrames(e)};l();let u=a(Ae(o,()=>{performance.now()-c>=s&&l()}),we(r.design),r.script,r.seed,(i.watchdogMs??0)/1e3),d=JSON.parse(u),f;if(!o.finished)switch(d.status){case`ok`:case`over`:o.finish();break;case`error`:f=Y(d.type,d.message,o.tick,d.line??void 0);break;case`watchdog`:f={type:`Watchdog`,message:t,friendly:t,tip:`Tip: every loop should call the bot (move, scan, wait...) so time passes.`,tick:o.tick},d.line!=null&&(f.line=d.line);break;case`internal`:f=Y(`InternalError`,d.message,o.tick)}f&&(l(),i.onError?.(f),o.abort(f.type===`Watchdog`?`watchdog`:f.type===`InternalError`?`aborted`:`script_error`)),l();let p={world:o.world,result:o.result()};return f&&(p.error=f),p}function Ae(e,t){let i=-1,a=0,o=(t,n)=>{e.tick!==i&&(i=e.tick,a=0),a++,a<=200?e.print(t,n):a===201&&e.print(`... (too much output - some lines hidden)`,`stderr`)},s=(i,a,o)=>{if(e.finished)return`{"over":true}`;try{let t=e.call(i,a,o);return JSON.stringify({value:t??null})}catch(e){if(e instanceof r||e?.name===`MatchOver`)return`{"over":true}`;if(e instanceof n)return JSON.stringify({error:e.errorName,message:e.message});throw e}finally{t()}};return(e,t)=>{try{let n=JSON.parse(t);return e===`call`?s(n[0],n[1],n[2]):e===`print`?(o(n[0],n[1]),`{}`):JSON.stringify({internal:`unknown bridge op ${e}`})}catch(e){return JSON.stringify({internal:e instanceof Error?e.message:String(e)})}}}const X=`https://cdn.jsdelivr.net/pyodide/v314.0.7/full/`,Z=self,je=Z.postMessage.bind(Z),Q=e=>je(e);async function Me(){let{loadPyodide:e}=await import(
+`)}const Te=[[/expected ':'/,()=>({friendly:`A line that starts a block (if, while, for, def, else) must end with a colon :`,tip:"Tip: write `while True:` - the colon is easy to forget."})],[/unterminated string|EOL while scanning/,()=>({friendly:`A piece of text is missing its closing quote mark.`,tip:`Tip: strings need a quote at both ends, like "hello".`})],[/unterminated triple-quoted string/,()=>({friendly:`A """triple-quoted""" string is never closed.`})],[/'(.)' was never closed/,e=>({friendly:`A bracket ${e[1]} was opened but never closed.`,tip:`Tip: every ( needs a matching ), every [ a ].`})],[/unmatched '(.)'|closing parenthesis '(.)' does not match/,e=>({friendly:`There is a closing bracket ${e[1]??e[2]} without a matching opening one.`})],[/Maybe you meant '==' or ':=' instead of '='|cannot assign to/,()=>({friendly:`You used = where Python expected a comparison or a name.`,tip:"Tip: = stores a value, == compares two values: `if x == 3:`"})],[/Perhaps you forgot a comma/,()=>({friendly:`Python found two values next to each other with nothing between them.`,tip:`Tip: separate arguments with commas: bot.gps.bearing_to(400, 200)`})],[/invalid decimal literal/,()=>({friendly:`A name or number is malformed - names cannot start with a digit.`})],[/'return' outside function/,()=>({friendly:"`return` only works inside a function (def)."})],[/'break' outside loop|'continue' not properly in loop/,()=>({friendly:"`break` and `continue` only work inside a loop (while or for)."})]],Ee=[[/expected an indented block/,()=>({friendly:`The line after a colon : needs to be indented.`,tip:`Tip: indent the body of if / while / for / def by 4 spaces.`})],[/unexpected indent/,()=>({friendly:`This line is indented more than Python expected.`,tip:`Tip: only indent lines that belong to a block (after a line ending in :).`})],[/unindent does not match/,()=>({friendly:`This line's indentation doesn't line up with the lines above it.`,tip:`Tip: lines in the same block must start at exactly the same column.`})]],G={true:`True`,false:`False`,none:`None`};function De(e){let t=/name '(\w+)' is not defined/.exec(e)?.[1];if(!t)return{friendly:`Python met a name it does not know.`};if(G[t.toLowerCase()]&&t!==G[t.toLowerCase()])return{friendly:`Python doesn't know '${t}'. It is spelled ${G[t.toLowerCase()]}, with a capital letter.`};let n=/Did you mean: '(\w+)'/.exec(e)?.[1];return{friendly:`Python doesn't know the name '${t}'.`+(n?` Did you mean '${n}'?`:``),tip:`Tip: check the spelling (Python cares about capitals), and set a variable before you use it. Parts live on bot, e.g. bot.drive.`}}function K(e){let t;if(t=/^(\S+)\(\) missing \d+ required positional arguments?: (.+)$/.exec(e))return{friendly:`${t[1]}() needs more information: you left out ${t[2]}.`,tip:`Tip: put the value inside the brackets, e.g. bot.drive.forward(100).`};if(t=/^(\S+)\(\) takes (\d+) positional arguments? but (\d+) (?:was|were) given$/.exec(e)){let e=t[1].startsWith(`bot.`),n=Number(t[2])-+!!e,r=Number(t[3])-+!!e;return{friendly:`${t[1]}() takes ${n===0?`no values`:n===1?`1 value`:`${n} values`} but you gave it ${r}.`}}if(t=/^(\S+)\(\) needs a number for (\w+), not (\w+)/.exec(e)){let e=t[3]===`str`?` Numbers go without quotes: 100, not "100".`:``;return{friendly:`${t[1]}() needs a number for ${t[2]}, but got a ${t[3]}.${e}`}}return/'(method|builtin_function_or_method|function)' object/.test(e)||/instances of 'method'/.test(e)?{friendly:`You used a method without calling it.`,tip:`Tip: add brackets to call it: bot.front_sensor.distance(), not bot.front_sensor.distance`}:/'NoneType' object/.test(e)?{friendly:`You used a value that is None (nothing).`,tip:`Tip: some calls return None, e.g. bot.drive.forward(100, wait=False) - don't use their result.`}:/can only concatenate str|unsupported operand type\(s\)/.test(e)?{friendly:`You mixed two types that cannot be combined, like text and a number.`,tip:`Tip: use str(x) to turn a number into text, or print("x is", x).`}:/object is not callable/.test(e)?{friendly:`You put brackets () after something that is not a function or method.`}:{friendly:`A value of the wrong type was used.`}}function Oe(t,n){if(t in e){let r=e[t],i=n||r.message;return{friendly:i[0].toUpperCase()+i.slice(1),tip:r.tip}}let r=e=>{for(let[t,r]of e){let e=n.match(t);if(e)return r(e)}};switch(t){case`SyntaxError`:return r(Te)??{friendly:`Python couldn't understand this line.`,tip:`Tip: look for a missing colon, bracket or quote here or on the line above.`};case`IndentationError`:case`TabError`:return r(Ee)??{friendly:`The indentation (spaces at the start of the line) is wrong here.`};case`NameError`:case`UnboundLocalError`:return De(n);case`TypeError`:return K(n);case`AttributeError`:return{friendly:n.startsWith(`bot`)?n:`That value doesn't have what you asked for: ${n}`,tip:`Tip: the API panel lists everything your bot can do.`};case`ZeroDivisionError`:return{friendly:`You divided by zero, which has no answer.`,tip:`Tip: check the number is not 0 before dividing.`};case`IndexError`:return{friendly:`You asked for an item past the end of a list.`,tip:"Tip: lists start at 0; check len(x) first, or loop with `for item in x:`."};case`KeyError`:return{friendly:`That key is not in the dictionary: ${n}`};case`ValueError`:return{friendly:`A value had the right type but a bad value: ${n}`};case`ModuleNotFoundError`:case`ImportError`:return{friendly:`That module is not available in Bot Arena.`,tip:`Tip: math and random are available; anything that talks to the internet is not.`};case`RecursionError`:return{friendly:`A function kept calling itself and never stopped.`};case`RuntimeError`:return n.startsWith(`input()`)?{friendly:`input() cannot be used here: your bot cannot stop and ask questions.`}:{friendly:`Something went wrong: ${n}`};case`InternalError`:return{friendly:`Something went wrong inside Bot Arena itself - not your code. Try running again.`};default:return{friendly:`Python stopped with a ${t}: ${n}`}}}const q=/* @__PURE__ */ new WeakMap;function J(e){if(q.has(e))return;let t=e.globals.get(`dict`)();e.runPython(xe,{globals:t,filename:`<bot-arena>`}),q.set(e,t.get(`run_player`)),t.destroy()}function Y(e,t,n,r){let{friendly:i,tip:a}=Oe(e,t),o={type:e,message:t,tick:n,friendly:i};return r!=null&&(o.line=r),a&&(o.tip=a),o}function ke(e,n,r,i){J(e);let a=q.get(e),o=n({level:r.level,design:r.design,seed:r.seed,scriptLines:be(r.script)});i.onStarted?.(o.world);let s=i.flushMs??50,c=performance.now(),l=[],u=e=>{for(let t of e)l.push({tick:o.tick,line:t})},d=()=>{c=performance.now();let e=o.takeFrames();(e.length||l.length)&&i.onFrames(e,l),l=[]};d();let f=a(Ae(o,u,()=>{performance.now()-c>=s&&d()}),we(r.design),r.script,r.seed,(i.watchdogMs??0)/1e3),p=JSON.parse(f);u(p.lines);let m;if(!o.finished)switch(p.status){case`ok`:case`over`:o.finish();break;case`error`:m=Y(p.type,p.message,o.tick,p.line??void 0);break;case`watchdog`:m={type:`Watchdog`,message:t,friendly:t,tip:`Tip: every loop should call the bot (move, scan, wait...) so time passes.`,tick:o.tick},p.line!=null&&(m.line=p.line);break;case`internal`:m=Y(`InternalError`,p.message,o.tick)}m&&(d(),i.onError?.(m),o.abort(m.type===`Watchdog`?`watchdog`:m.type===`InternalError`?`aborted`:`script_error`)),d();let h={world:o.world,result:o.result()};return m&&(h.error=m),h}function Ae(e,t,i){let a=-1,o=0,s=(t,n)=>{e.tick!==a&&(a=e.tick,o=0),o++,o<=200?e.print(t,n):o===201&&e.print(`... (too much output - some lines hidden)`,`stderr`)},c=(a,o,s,c)=>{if(e.finished)return`{"over":true}`;t(c);try{let t=e.call(a,o,s);return JSON.stringify({value:t??null})}catch(e){if(e instanceof r||e?.name===`MatchOver`)return`{"over":true}`;if(e instanceof n)return JSON.stringify({error:e.errorName,message:e.message});throw e}finally{i()}};return(e,t)=>{try{let n=JSON.parse(t);return e===`call`?c(n[0],n[1],n[2],n[3]):e===`print`?(s(n[0],n[1]),`{}`):JSON.stringify({internal:`unknown bridge op ${e}`})}catch(e){return JSON.stringify({internal:e instanceof Error?e.message:String(e)})}}}const X=`https://cdn.jsdelivr.net/pyodide/v314.0.7/full/`,Z=self,je=Z.postMessage.bind(Z),Q=e=>je(e);async function Me(){let{loadPyodide:e}=await import(
 /* @vite-ignore */
-`${X}pyodide.mjs`),t=await e({indexURL:X,env:{PYTHONHASHSEED:`0`}});return J(t),ye(),t}const $=Me();$.then(e=>Q({type:`ready`,pyodideVersion:e.version}),e=>Q({type:`fatal`,message:`Python failed to load: ${e instanceof Error?e.message:String(e)}`})),Z.onmessage=async e=>{let t=e.data;if(t.type!==`run`)return;let n=await $,{runId:r}=t,i=0;try{let{result:e}=ke(n,_e,t,{onStarted:e=>Q({type:`started`,runId:r,world:e}),onFrames:e=>{i=e.at(-1).tick,Q({type:`frames`,runId:r,frames:e})},onError:e=>Q({type:`error`,runId:r,error:e})});Q({type:`done`,runId:r,result:e})}catch(e){let t=e instanceof Error?e.message:String(e);Q({type:`error`,runId:r,error:Y(`InternalError`,t,i)}),Q({type:`fatal`,message:t})}};
+`${X}pyodide.mjs`),t=await e({indexURL:X,env:{PYTHONHASHSEED:`0`}});return J(t),ye(),t}const $=Me();$.then(e=>Q({type:`ready`,pyodideVersion:e.version}),e=>Q({type:`fatal`,message:`Python failed to load: ${e instanceof Error?e.message:String(e)}`})),Z.onmessage=async e=>{let t=e.data;if(t.type!==`run`)return;let n=await $,{runId:r}=t,i=0;try{let{result:e}=ke(n,_e,t,{onStarted:e=>Q({type:`started`,runId:r,world:e}),onFrames:(e,t)=>{i=e.at(-1)?.tick??i,Q({type:`frames`,runId:r,frames:e,lines:t})},onError:e=>Q({type:`error`,runId:r,error:e})});Q({type:`done`,runId:r,result:e})}catch(e){let t=e instanceof Error?e.message:String(e);Q({type:`error`,runId:r,error:Y(`InternalError`,t,i)}),Q({type:`fatal`,message:t})}};
