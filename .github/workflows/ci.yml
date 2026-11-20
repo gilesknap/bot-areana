@@ -70,6 +70,10 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - name: DIAG (temporary)
+        if: matrix.browser == 'chromium'
+        continue-on-error: true
+        run: nproc; DIAG=1 npm run test:e2e -- --project=chromium --workers=1 diag
       - name: Playwright e2e
         run: npm run test:e2e -- --project=${{ matrix.browser }}
       - uses: actions/upload-artifact@v4
