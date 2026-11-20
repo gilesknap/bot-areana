@@ -65,6 +65,11 @@ export class PythonRunner {
     this.timer = setInterval(() => this.checkWatchdog(), Math.min(250, this.watchdogMs / 4));
   }
 
+  /** True once the current worker has Python loaded. */
+  get booted(): boolean {
+    return this.isReady;
+  }
+
   /** Start a run (cancelling any run in progress). Handlers fire as messages arrive. */
   run(req: RunRequest, handlers: RunHandlers): { cancel(): void } {
     if (this.active) this.cancelActive();

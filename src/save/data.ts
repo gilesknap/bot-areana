@@ -24,6 +24,7 @@ export function newProfile(name: string): Profile {
     designs: {},
     scripts: {},
     hintsShown: {},
+    toursSeen: [],
     settings: { muted: false, speed: 1 },
   };
 }
@@ -135,6 +136,7 @@ function parseProfile(v: unknown): Profile | null {
     designs: parseRecord(v.designs, parseDesign),
     scripts: parseRecord(v.scripts, (s) => (typeof s === 'string' ? s : null)),
     hintsShown: parseRecord(v.hintsShown, (n) => (typeof n === 'number' && n >= 0 ? Math.floor(n) : null)),
+    toursSeen: Array.isArray(v.toursSeen) ? v.toursSeen.filter((t): t is string => typeof t === 'string') : [],
     settings: {
       muted: settings.muted === true,
       speed: SPEEDS.includes(speed as PlaybackSpeed) ? (speed as PlaybackSpeed) : 1,

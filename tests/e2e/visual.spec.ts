@@ -42,6 +42,7 @@ async function seedProgress(page: Page, levelId: string): Promise<void> {
       const profile = data.profiles.find((p: { id: string }) => p.id === data.activeProfileId);
       for (const l of before) profile.levels[l] = { cleared: true, bestStars: 3, attempts: 1 };
       profile.designs[id] = design;
+      profile.toursSeen = ['workshop', 'code'];
       profile.scripts[id] = script;
       store.put(data, 'data');
       await new Promise((resolve) => (tx.oncomplete = resolve));
@@ -94,4 +95,39 @@ test.describe('HiDPI', () => {
     await page.locator('.arena-wrap').screenshot({ path: 'test-results/screens/game-l05-arena-hidpi.png' });
     expect(errors).toEqual([]);
   });
+});
+
+test('first-run tours, Python status and the API drawer', async ({ page }) => {
+  const errors = watchBrowser(page, { keepTours: true });
+  await page.goto('./#/level/l01/workshop');
+  const tour = page.getByRole('dialog', { name: 'Guided tour' });
+  await expect(tour).toBeVisible();
+  await shot(page, 'tour-workshop-1');
+  for (let i = 1; i < 5; i++) await tour.getByRole('button', { name: 'Next →' }).click();
+  await shot(page, 'tour-workshop-5');
+  await tour.getByRole('button', { name: 'Got it' }).click();
+  await expect(tour).toBeHidden();
+
+  await page.getByRole('link', { name: 'Write the code →' }).click();
+  await expect(tour).toBeVisible();
+  await expect(page.getByRole('status').filter({ hasText: 'PYTHON' })).toBeVisible();
+  await shot(page, 'tour-code-1');
+  await tour.getByRole('button', { name: 'Skip tour' }).click();
+  await expect(tour).toBeHidden();
+
+  // API reference: click-to-insert an example into the script.
+  await page.getByRole('button', { name: 'API' }).click();
+  await page.getByRole('button', { name: 'Insert example: bot.drive.turn' }).click();
+  await expect(page.locator('.cm-content')).toContainText('bot.drive.turn(90)');
+  await shot(page, 'api-drawer');
+
+  // Tours are remembered for the profile.
+  await page.reload();
+  await expect(page.getByText('Python is ready', { exact: false })).toBeVisible({ timeout: 90_000 });
+  await expect(page.getByRole('status').filter({ hasText: 'PYTHON READY' })).toBeVisible();
+  await expect(tour).toBeHidden();
+  await page.goto('./#/level/l01/workshop');
+  await expect(page.getByRole('link', { name: 'Write the code →' })).toBeVisible();
+  await expect(tour).toBeHidden();
+  expect(errors).toEqual([]);
 });

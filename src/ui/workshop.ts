@@ -8,6 +8,7 @@ import { apiPreview } from './apiRef';
 import { levelTopbar, openDialog, type Screen } from './chrome';
 import { h, icon, svg, toast } from './dom';
 import { getDesign, getScript, setDesign, type AppState, type LevelContext } from './state';
+import { maybeTour } from './tour';
 import { canFit, designIssues, fitPart, issueText, meters, removePart, setChassis, type Mount } from './workshopRules';
 
 const CATEGORIES: PartCategory[] = ['locomotion', 'sensor', 'offense', 'defense', 'core'];
@@ -155,7 +156,16 @@ export function workshopScreen(state: AppState, ctx: LevelContext): Screen {
       const n = unlockLevel(c.id);
       locked.push({ name: c.name, note: n ? `unlocks at level ${n}` : 'locked' });
     }
-    for (const l of locked) bin.append(h('div.part-locked', {}, icon('lock'), `${l.name} · ${l.note}`));
+    // One dashed box for everything still locked, so a long list doesn't push the bin off screen.
+    if (locked.length) {
+      bin.append(
+        h(
+          'div.part-locked',
+          { 'aria-label': 'Locked parts' },
+          ...locked.map((l) => h('div.locked-row', {}, icon('lock'), h('span', {}, l.name), h('span.locked-note', {}, l.note))),
+        ),
+      );
+    }
   }
 
   // ---- Blueprint ----
@@ -341,7 +351,7 @@ export function workshopScreen(state: AppState, ctx: LevelContext): Screen {
     const issues = designIssues(design, ctx.budget, ctx.unlocked);
     spec.replaceChildren(
       h('div.eyebrow', {}, 'SPECIFICATION'),
-      ...meters(design, ctx.budget).map((m, i) => {
+      h('div.meters', {}, ...meters(design, ctx.budget).map((m, i) => {
         const colour = m.over ? 'var(--alert)' : METER_COLOURS[i];
         return h(
           'div.meter',
@@ -349,7 +359,7 @@ export function workshopScreen(state: AppState, ctx: LevelContext): Screen {
           h('div.meter-row', {}, h('span', {}, m.label), h('span.mono', { style: `color: ${colour}` }, m.value)),
           h('div.meter-track', {}, h('div.meter-fill', { style: `width: ${(m.fill * 100).toFixed(0)}%; background: ${colour}` })),
         );
-      }),
+      })),
       issues.length === 0 ? '' : h('ul.issues', { role: 'alert' }, ...issues.map((i) => h('li', {}, issueText(i)))),
       h('div.eyebrow.spaced', {}, 'YOUR PYTHON API'),
       apiPreview(design),
@@ -405,5 +415,18 @@ export function workshopScreen(state: AppState, ctx: LevelContext): Screen {
   }
 
   render();
-  return { el, destroy: () => document.removeEventListener('keydown', onKey) };
+  const endTour = maybeTour(state, 'workshop', el, [
+    { target: '.bin', title: 'Parts bin', text: 'These are the parts you have unlocked. Click one, then click a glowing slot on your bot to fit it (or drag it there).' },
+    { target: '.blueprint', title: 'Your bot', text: 'Front, rear, left, right and centre slots. Click a fitted part to take it off again.' },
+    { target: '.meters', title: 'Budget', text: "Weight and power have to stay inside this level's limits, or your bot can't go into the arena." },
+    { target: '.api-preview', title: 'Your Python API', text: 'Every part adds commands to your script: wheels give you bot.drive, a blaster gives you bot.blaster.' },
+    { target: '.spec .cta', title: 'Next: code', text: 'When your bot is ready, write the Python that drives it.' },
+  ]);
+  return {
+    el,
+    destroy: () => {
+      endTour();
+      document.removeEventListener('keydown', onKey);
+    },
+  };
 }

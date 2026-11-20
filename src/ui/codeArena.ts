@@ -20,6 +20,7 @@ import { levelTopbar, type Screen } from './chrome';
 import { h, icon, pad2 } from './dom';
 import { createEditor } from './editor';
 import { getRunner } from './runner';
+import { maybeTour } from './tour';
 import { getDesign, getScript, setScript, type AppState, type LevelContext } from './state';
 import { designIssues, issueText } from './workshopRules';
 
@@ -50,10 +51,10 @@ export function codeArenaScreen(state: AppState, ctx: LevelContext): Screen {
 
   // ---- Layout ----
   const hintsBtn = h('button.btn.small', { type: 'button' });
-  const apiBtn = h('button.btn.small', { type: 'button', 'aria-expanded': 'false' }, 'API');
+  const apiBtn = h('button.btn.small.api-btn', { type: 'button', 'aria-expanded': 'false' }, 'API');
   const hintPanel = h('div.hint-panel', { hidden: true, role: 'note' });
   const editorHost = h('div.editor-host');
-  const apiDrawer = h('div.api-drawer', { hidden: true, 'aria-label': 'API reference' }, apiReference(design));
+  const apiDrawer = h('div.api-drawer', { hidden: true, role: 'region', 'aria-label': 'API reference' });
   const consoleOut = h('div.console-out', { role: 'log', 'aria-live': 'polite' });
   const arenaHost = h('div.arena-host');
   const hudHost = arenaHost;
@@ -64,6 +65,7 @@ export function codeArenaScreen(state: AppState, ctx: LevelContext): Screen {
   const stepBtn = h('button.run-btn', { type: 'button', 'aria-label': 'Step one tick' }, icon('step'));
   const speedBtns = SPEEDS.map((s) => h('button', { type: 'button', 'aria-pressed': 'false' }, s.label));
   const readout = h('div.readout');
+  const pyStatus = h('div.py-status', { role: 'status' });
 
   const el = h(
     'div.screen',
@@ -92,6 +94,7 @@ export function codeArenaScreen(state: AppState, ctx: LevelContext): Screen {
           stepBtn,
           h('div.seg.speeds', { role: 'group', 'aria-label': 'Playback speed' }, ...speedBtns),
           h('div.spacer'),
+          pyStatus,
           readout,
         ),
       ),
@@ -100,6 +103,27 @@ export function codeArenaScreen(state: AppState, ctx: LevelContext): Screen {
 
   const editor = createEditor(editorHost, getScript(state, ctx), design, (text) => setScript(state, ctx, text));
   const arena = new ArenaView(arenaHost);
+  apiDrawer.append(
+    apiReference(design, (code) => {
+      if (!editor.insert(code)) log('Editing is locked during a run. Press reset (⟲) to edit.', 'sys');
+    }),
+  );
+
+  // ---- Python status: booting in the background, never blocking ----
+  function watchPython() {
+    if (runner.booted) return setPyStatus('ready');
+    setPyStatus('booting');
+    const ready = runner.ready;
+    ready.then(
+      () => runner.ready === ready && setPyStatus('ready'),
+      () => runner.ready === ready && setPyStatus('failed'),
+    );
+  }
+  function setPyStatus(s: 'booting' | 'ready' | 'failed') {
+    pyStatus.className = `py-status ${s}`;
+    pyStatus.textContent = s === 'booting' ? 'PYTHON BOOTING…' : s === 'ready' ? 'PYTHON READY' : 'PYTHON OFFLINE';
+    pyStatus.title = s === 'booting' ? 'Python is loading in the background. You can press Run now: it starts as soon as Python is up.' : '';
+  }
 
   // ---- Console ----
   function log(text: string, kind: 'out' | 'err' | 'log' | 'tip' | 'sys' = 'out', tick?: number) {
@@ -196,8 +220,10 @@ export function codeArenaScreen(state: AppState, ctx: LevelContext): Screen {
     consoleOut.replaceChildren();
     setPhase('running');
     setPlaying(!startPaused);
-    status.hidden = false;
-    status.textContent = 'Starting Python…';
+    if (!runner.booted) {
+      status.hidden = false;
+      status.textContent = 'Python is still booting… your run starts in a moment.';
+    }
     try {
       await runner.ready;
     } catch (e) {
@@ -235,6 +261,7 @@ export function codeArenaScreen(state: AppState, ctx: LevelContext): Screen {
         onDone: (r: MatchResult) => {
           result = r;
           run = null;
+          watchPython(); // the worker restarts after a watchdog or crash
           if (!started) {
             // e.g. a SyntaxError: nothing to play back, so let them fix the line straight away.
             status.hidden = true;
@@ -273,6 +300,7 @@ export function codeArenaScreen(state: AppState, ctx: LevelContext): Screen {
       arena.reset();
       showPreview();
     }
+    watchPython();
   }
 
   arena.onTick((tick: number, frame: Frame) => {
@@ -392,6 +420,14 @@ export function codeArenaScreen(state: AppState, ctx: LevelContext): Screen {
   setPlaying(false);
   setSpeed(state.profile.settings.speed, false);
   showPreview();
+  watchPython();
+  const endTour = maybeTour(state, 'code', el, [
+    { target: '.editor-wrap', title: 'Your script', text: 'This is main.py: real Python that drives your bot. It is saved as you type.' },
+    { target: '.code-toolbar .api-btn', title: 'API reference', text: 'Every command your fitted parts give you, with examples. Click an example to put it in your script.' },
+    { target: '.run-btn.primary', title: 'Run', text: 'Sends your bot into the arena. Python boots in the background, so you can press it straight away.' },
+    { target: '.runbar .speeds', title: 'Watch it back', text: 'Pause, step one tick at a time, or change speed. Reset (⟲) goes back to editing.' },
+    { target: '.console', title: 'Console', text: 'Your print() output and friendly error messages appear here.' },
+  ]);
   runner.ready.then(
     () => log('Python is ready. Press ▶ to run your script.', 'sys'),
     (e: Error) => log(`Python failed to load: ${e.message}. Check your connection and reload.`, 'err'),
@@ -401,6 +437,7 @@ export function codeArenaScreen(state: AppState, ctx: LevelContext): Screen {
   return {
     el,
     destroy() {
+      endTour();
       run?.cancel();
       hud.destroy();
       arena.destroy();

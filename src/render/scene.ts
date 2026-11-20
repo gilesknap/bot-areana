@@ -166,6 +166,7 @@ export class ArenaScene extends Phaser.Scene {
   private corners: Phaser.GameObjects.Image[] = [];
   private lock?: { brackets: Phaser.GameObjects.Image[]; text: Phaser.GameObjects.Text; target?: string; t: number };
   private lavaTiles: Array<{ x: number; y: number; w: number; h: number }> = [];
+  private lavaSpots: Array<{ img: Phaser.GameObjects.Image; x: number; y: number; phase: number; size: number }> = [];
   private waterTiles: Array<{ x: number; y: number; w: number; h: number }> = [];
   private bubbles: Array<{ x: number; y: number; r: number; age: number; life: number }> = [];
   private rand = rng(1);
@@ -295,9 +296,15 @@ export class ArenaScene extends Phaser.Scene {
     const M = HALL_MARGIN;
     const fullW = world.width + 2 * M;
     const fullH = world.height + 2 * M;
-    const res = Math.min(2, 4096 / Math.max(fullW, fullH));
+    // Canvas pixels per cm: at least the camera zoom (which includes devicePixelRatio).
+    const zoom = Math.min(this.scale.width / fullW, this.scale.height / fullH) || 1;
+    const res = Math.min(Math.max(2, zoom), 4096 / Math.max(fullW, fullH));
     const player = world.bots.find((b) => b.team === 'player');
     const input = { level, world, spawn: level.spawn ?? player?.start ?? { x: 60, y: 60, heading: 0 } };
+
+    // Dim plates fill whatever the camera shows beyond the hall (the arena's aspect rarely matches).
+    const out = 4000;
+    this.add.tileSprite(-out, -out, world.width + 2 * out, world.height + 2 * out, 'fx-outside').setOrigin(0).setDepth(D.hall - 1);
 
     const hall = this.textures.createCanvas('hall', Math.ceil(fullW * res), Math.ceil(fullH * res))!;
     paintHall(hall.context, input, res);
@@ -317,12 +324,23 @@ export class ArenaScene extends Phaser.Scene {
         .setScale(1 / res)
         .setBlendMode(Phaser.BlendModes.ADD)
         .setDepth(D.terrainFx);
+      // Slowly drifting upwellings of hotter lava.
+      this.lavaSpots = this.lavaTiles
+        .filter(() => this.rand() < 0.5)
+        .map((t) => ({
+          img: this.add.image(0, 0, 'fx-glow').setTint(0xffe29a).setBlendMode(Phaser.BlendModes.ADD).setDepth(D.terrainFx),
+          x: t.x + t.w / 2,
+          y: t.y + t.h / 2,
+          phase: this.rand() * Math.PI * 2,
+          size: 34 + this.rand() * 22,
+        }));
     } else {
       this.lavaGlow = undefined;
+      this.lavaSpots = [];
     }
     this.terrainG = this.add.graphics().setDepth(D.terrainFx);
 
-    this.decalRes = Math.min(2, 4096 / Math.max(world.width, world.height));
+    this.decalRes = Math.min(Math.max(2, zoom), 4096 / Math.max(world.width, world.height));
     this.decals = this.add
       .renderTexture(0, 0, Math.ceil(world.width * this.decalRes), Math.ceil(world.height * this.decalRes))
       .setOrigin(0)
@@ -810,6 +828,14 @@ export class ArenaScene extends Phaser.Scene {
     const t = this.realTime / 1000;
     if (this.lavaGlow) this.lavaGlow.setAlpha(0.55 + 0.25 * Math.sin(t * 1.7) + 0.08 * Math.sin(t * 5.3));
     this.corners.forEach((c, i) => c.setAlpha(0.6 + 0.35 * Math.sin(t * 2.4 + i * 1.3)));
+    for (const s of this.lavaSpots) {
+      const p = t * 0.35 + s.phase;
+      const k = 0.85 + 0.15 * Math.sin(p * 2.3);
+      s.img
+        .setPosition(s.x + Math.sin(p) * 9, s.y + Math.cos(p * 0.8) * 9)
+        .setDisplaySize(s.size * k, s.size * k)
+        .setAlpha(0.22 + 0.14 * Math.sin(p * 1.7));
+    }
 
     const g = this.terrainG;
     if (!g) return;
@@ -882,9 +908,8 @@ export class ArenaScene extends Phaser.Scene {
         if (dying.cause === 'pit') v.body.setScale((1 - f * 0.75) / BOT_RES).setAngle(bf.heading + f * 160).setAlpha(1 - f);
         else v.body.setTint(0xff6a2a).setScale((1 - f * 0.15) / BOT_RES).setAlpha(1 - f);
       } else {
+        // The wreck decal, scorch and smoke stamped on 'destroyed' stand in for the bot.
         for (const o of objs) o?.setVisible(false);
-        // Turret bases stay as burnt-out husks.
-        if (v.base) v.base.setVisible(true).setTint(0x555555).setAlpha(0.8);
       }
       return;
     }
@@ -1092,6 +1117,8 @@ export class ArenaScene extends Phaser.Scene {
       [x - s, y + s],
     ];
     lock.brackets.forEach((b, i) => b.setVisible(true).setPosition(corners[i]![0], corners[i]![1]).setAlpha(lock.t));
+    // Faint sight line from the bot to its target.
+    this.dashedLine(pf!.x, pf!.y, x, y, COL.signal, 0.28 * lock.t, 1);
     lock.text
       .setVisible(true)
       .setPosition(x, y - s - 6)

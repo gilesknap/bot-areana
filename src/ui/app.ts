@@ -9,6 +9,7 @@ import { openDialog, type Screen } from './chrome';
 import { h, pad2, toast } from './dom';
 import { highlightPython } from './highlight';
 import { navigate, parseRoute, type Route } from './router';
+import { getRunner } from './runner';
 import { AppState, levelContext, type LevelContext } from './state';
 import { workshopScreen } from './workshop';
 
@@ -36,6 +37,9 @@ export async function startApp(root: HTMLElement): Promise<void> {
   };
   window.addEventListener('hashchange', () => void render());
   await render();
+  // Boot Python in the background straight away, so the first Run is instant. The worker is
+  // shared by every Code & Arena visit.
+  setTimeout(getRunner, 0);
 }
 
 /** The Code & Arena screen (Phaser, CodeMirror, the sim) is its own chunk, loaded on first use. */

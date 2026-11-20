@@ -12,9 +12,17 @@ export async function shot(page: Page, name: string): Promise<void> {
  * Echo the page's and its workers' console output and failed requests into the test log, and
  * collect uncaught errors and console.error messages so the test can assert there were none.
  * (No console errors are known to be benign, so none are allowed.)
+ * Also dismisses the first-visit guided tours unless `keepTours`.
  */
-export function watchBrowser(page: Page): string[] {
+export function watchBrowser(page: Page, opts: { keepTours?: boolean } = {}): string[] {
   const errors: string[] = [];
+  // A new profile gets a guided tour on its first Workshop and Code & Arena visit: skip it
+  // whenever it would get in the way (unless the test is about the tour).
+  if (!opts.keepTours) {
+    void page.addLocatorHandler(page.getByRole('dialog', { name: 'Guided tour' }), (tour) =>
+      tour.getByRole('button', { name: 'Skip tour' }).click(),
+    );
+  }
   const onConsole = (where: string) => (m: ConsoleMessage) => {
     console.log(`[${where} ${m.type()}] ${m.text()}`);
     if (m.type() === 'error') errors.push(`${where} console.error: ${m.text()}`);
